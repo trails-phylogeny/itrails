@@ -622,6 +622,13 @@ def get_trans_mat(transition_mat, species, coal, rho):
 
 
 def wrapper_state_1():
+    """
+    Wrapper function that returns the transition matrix,
+    omega dictionary and state dictionary for 1 species.
+
+    :return: Transition matrix, omega dictionary and
+    state dictionary for 1 species.
+    """
     species = 1
     mss = [2**i for i in range(species)]
     state_array_1 = set_partitions(species)
@@ -633,6 +640,13 @@ def wrapper_state_1():
 
 
 def wrapper_state_2():
+    """
+    Wrapper function that returns the transition matrix,
+    omega dictionary and state dictionary for 2 species.
+
+    :return: Transition matrix, omega dictionary and
+    state dictionary for 2 species.
+    """
     species = 2
     mss = [2**i for i in range(species)]
     state_array_2 = set_partitions(species)
@@ -644,6 +658,13 @@ def wrapper_state_2():
 
 
 def wrapper_state_3():
+    """
+    Wrapper function that returns the transition matrix,
+    omega dictionary and state dictionary for 3 species.
+
+    :return: Transition matrix, omega dictionary and
+    state dictionary for 3 species.
+    """
     species = 3
     mss = [2**i for i in range(species)]
     state_array_3 = set_partitions(species)
