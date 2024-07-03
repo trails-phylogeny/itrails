@@ -1,17 +1,17 @@
 import numpy as np
-from trans_mat import wrapper_state, get_trans_mat
+from trans_mat import get_trans_mat, wrapper_state_1, wrapper_state_2, wrapper_state_3
 from expm import expm
 from cut_times import cutpoints_AB, cutpoints_ABC, get_times
 from combine_states import combine_states
 from numba.typed import Dict
 from numba.types import Tuple, int64
-from numba import njit
+from numba import jit
 import time
 
 int_tuple = Tuple((int64, int64))
 
 
-@njit
+@jit(nopython=True)
 def get_omegas_numba(omega_nums):
     omega_dict = Dict.empty(
         key_type=int_tuple,
@@ -25,7 +25,7 @@ def get_omegas_numba(omega_nums):
     return omega_dict
 
 
-@njit
+@jit(nopython=True)
 def get_final_per_interval_nodict(trans_mat_ab, times, omega_dict, pi_AB):
     # Create dictionary for base case, also every omega will be called -1, -1.
     time_0dict = {}
@@ -89,76 +89,41 @@ def get_final_per_interval_nodict(trans_mat_ab, times, omega_dict, pi_AB):
 
 def get_final_per_interval(trans_mat_ab, times, omega_dict, pi_AB):
 
-    # Create dictionary for base case, also every omega will be called -1, -1.
-    time_0dict = {}
+    accumulated_results = {}
     all_omegas = (-1, -1)
-    mat_0 = np.zeros_like(trans_mat_ab)
-    # Base case for time 0, from all omegas to every other possibility.
     exponential_time_0 = expm(trans_mat_ab * times[0])
-    time0 = time.time()
     for key, value in omega_dict.items():
-        exponential_time_add = mat_0.copy()  # 15x15 0s
-        exponential_time_add[:, min(value) : max(value) + 1] = exponential_time_0[
-            :, min(value) : max(value) + 1
-        ]
-        time_0dict[(all_omegas, key)] = exponential_time_add
-    # Dictionary to accumulate the results, keys are omega paths as tuples, values are precomputed matrices.
-    acc_results = time_0dict
+        sliced_mat = exponential_time_0 @ np.diag(value)
+        accumulated_results[(all_omegas, key)] = sliced_mat
 
-    # acc: keys: -1-1, 00///-1-1, 03///-1-1, 30///-1-1, 33
-    # acc: values: matrices (slices)
-
-    # Each of the time cuts
     for i in range(1, len(times)):
         exponential_time = expm(trans_mat_ab * times[i])
         each_time_dict = {}
         actual_results = {}
-        # Populate a temp dictionary with the every possible slice.
+
         for key, value in omega_dict.items():
             for key2, value2 in omega_dict.items():
-                if (
-                    key[0] <= key2[0] and key[1] <= key2[1]
-                ):  # Cuidado para 3, de 3 a 5 no puede pasar. ######
-                    exponential_time_add = mat_0.copy()
-                    exponential_time_add[
-                        min(value) : max(value) + 1, min(value2) : max(value2) + 1
-                    ] = exponential_time[
-                        min(value) : max(value) + 1, min(value2) : max(value2) + 1
-                    ]
+                if key[0] <= key2[0] and key[1] <= key2[1]:
+                    sliced_mat = np.diag(value) @ exponential_time @ np.diag(value2)
+                    each_time_dict[(key, key2)] = sliced_mat
 
-                    each_time_dict[(key, key2)] = (
-                        exponential_time_add  # Initialize each time dict con matrices de 0s #############
-                    )
-                    # Generarla entera para todos los times, sin tener que mantener matrices en memoria y "mask" con 0s
-
-        # No tener que guardar todas las matrices del primer nested forloop. Podemos utilizar todos los paths the omegas
-        # Podemos sacar todas las omegas y despues on the fly sacamos todos los caminos "de golpe"
-
-        # Multiply each possible slice with the results that we already had and update the accumulated results dictionary.
-        for transition_0, matrix_0 in acc_results.items():
+        for transition_0, matrix_0 in accumulated_results.items():
             end_state = transition_0[-1]
             for transition_1, matrix_1 in each_time_dict.items():
                 start_state = transition_1[0]
                 if start_state == end_state:
-                    result = matrix_0 @ matrix_1  # Multiplicar por omega vector
+                    result = matrix_0 @ matrix_1
                     actual_results[(*transition_0, transition_1[1])] = result
                 else:
                     continue
-        acc_results = actual_results
+        accumulated_results = actual_results
 
-    # Create the final_p vector multiplying each slice by pi and populate it with the calculation for each state we end up in.
-    # Final prob vector debug is just a sum of every to see if they sum up to 1
-    final_prob_vector_debug = np.zeros((trans_mat_ab.shape[0]), dtype=np.float64)
     final_prob_vector = {}
-    for trans, prob_slice in acc_results.items():
-        pi_slice = pi_AB @ prob_slice
-        final_prob_vector[trans] = pi_slice
-        for i in range(len(final_prob_vector_debug)):
-            final_prob_vector_debug[i] += pi_slice[i]
+    for path, matrix in accumulated_results.items():
+        pi_slice = pi_AB @ matrix
+        final_prob_vector[path] = pi_slice
 
-    time1 = time.time()
-    print(time1 - time0)
-    return final_prob_vector_debug, acc_results, final_prob_vector
+    return accumulated_results, final_prob_vector
 
 
 def get_joint_prob_mat(
@@ -188,11 +153,11 @@ def get_joint_prob_mat(
 
     ## This wouold be faster reading from csv but I think generating it from scratch is more mantainable
     # State space 1 seq
-    transitions_1, omega_dict_1, state_dict_1 = wrapper_state(1)
+    transitions_1, omega_dict_1, state_dict_1 = wrapper_state_1()
     # State space 2 seq
-    transitions_2, omega_dict_2, state_dict_2 = wrapper_state(2)
+    transitions_2, omega_dict_2, state_dict_2 = wrapper_state_2()
     # State space 3 seq
-    transitions_3, omega_dict_3, state_dict_3 = wrapper_state(3)
+    transitions_3, omega_dict_3, state_dict_3 = wrapper_state_3()
     print(omega_dict_2)
     # Get transition matrix for A
     trans_mat_a = get_trans_mat(transitions_1, 1, coal_A, rho_A)
@@ -228,21 +193,14 @@ def get_joint_prob_mat(
         cut_AB = cutpoints_AB(n_int_AB, t_AB, coal_AB)
     times_AB = get_times(cut_AB, list(range(len(cut_AB))))
 
-    """ 
-    final_AB pi_AB por cada vector final del path, luego combine states me daria
-     """
-    # Calculate the final probability vector for the two sequence CTMC
-    get_final_per_interval(trans_mat_ab, times_AB, omega_dict_2, pi_AB)
+    accumulated_results, final_prob_vector = get_final_per_interval(
+        trans_mat_ab, times_AB, omega_dict_2, pi_AB
+    )
 
-    # Combine AB and C to get initial probabilities for the three sequence CTMC
-    # pi_ABC = combine_states(
-    #    number_dict_AB, number_dict_C, number_dict_ABC, final_AB, final_C
-    # )
-
-    pass
+    return accumulated_results, final_prob_vector
 
 
-get_joint_prob_mat(
+accumulated_results, final_prob_vector = get_joint_prob_mat(
     t_A=10,
     t_B=10,
     t_AB=20,
@@ -264,6 +222,9 @@ get_joint_prob_mat(
     cut_AB="standard",
 )
 
+print(accumulated_results)
+print()
+print(final_prob_vector)
 
 """ 
 0. Probar con 0s - HECHO, 1 orden de magnitud + rápido
