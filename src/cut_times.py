@@ -54,12 +54,10 @@ def get_times(cut, intervals):
     a list of indices representing the interval cutpoints
     in order.
 
-    Parameters
-    ----------
-    cut : list of floats
-        List of ordered cutpoints
-    intervals : list of integers
-        Ordered indices of cutpoints
+    :param cut: List of ordered cutpoints
+    :type cut: list[float]
+    :param intervals: Ordered indices of cutpoints
+    :type intervals: list[int]
     """
     return [
         cut[intervals[i + 1]] - cut[intervals[i]] for i in range(len(intervals) - 1)
