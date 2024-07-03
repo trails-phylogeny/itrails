@@ -8,21 +8,19 @@ from numba.types import Tuple, int64
 from numba import jit
 import time
 
-int_tuple = Tuple((int64, int64))
-
-
-@jit(nopython=True)
-def get_omegas_numba(omega_nums):
-    omega_dict = Dict.empty(
-        key_type=int_tuple,
-        value_type=int_tuple,
-    )
-
-    for i in range(len(omega_nums)):
-        for j in range(len(omega_nums)):
-            omega_dict[(omega_nums[i], omega_nums[j])] = (omega_nums[i], omega_nums[j])
-
-    return omega_dict
+# int_tuple = Tuple((int64, int64))
+# @jit(nopython=True)
+# def get_omegas_numba(omega_nums):
+#     omega_dict = Dict.empty(
+#         key_type=int_tuple,
+#         value_type=int_tuple,
+#     )
+#
+#     for i in range(len(omega_nums)):
+#         for j in range(len(omega_nums)):
+#             omega_dict[(omega_nums[i], omega_nums[j])] = (omega_nums[i], omega_nums[j])
+#
+#     return omega_dict
 
 
 @jit(nopython=True)
