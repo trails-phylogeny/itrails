@@ -158,7 +158,6 @@ def get_joint_prob_mat(
     transitions_2, omega_dict_2, state_dict_2 = wrapper_state_2()
     # State space 3 seq
     transitions_3, omega_dict_3, state_dict_3 = wrapper_state_3()
-    print(omega_dict_2)
     # Get transition matrix for A
     trans_mat_a = get_trans_mat(transitions_1, 1, coal_A, rho_A)
     # Get transition matrix for B
