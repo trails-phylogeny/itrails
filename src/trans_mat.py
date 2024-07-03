@@ -1,11 +1,9 @@
 import numpy as np
-import time
 import numba
-from numba import jit, njit
+from numba import jit
 from numba.typed import Dict
 from numba.types import Tuple, int64, float64, boolean
 from itertools import combinations
-import matplotlib.pyplot as plt
 
 
 @jit(nopython=True)
@@ -14,10 +12,10 @@ def bell_numbers(n):
     Given a number 'n', this function returns the n'th Bell Number,
     used for initializing the matrices with the correct number of rows.
 
-    Parameters
-    ----------
-    n : int
-        Number for which the Bell number is returned.
+    :param n: Number for which the Bell number is returned.
+    :type n: int
+    :return: The n'th Bell Number.
+    :rtype: int
     """
     dp = [1] + [0] * n
     for i in range(1, n + 1):
@@ -41,11 +39,10 @@ def partition(collection):
     The set partitions do have format such as [1,2,3,4,5,6] or
     [[1,2,3][4,5,6]].
 
-    Parameters
-    ----------
-    collection : list of type int
-        List that ranges from 1 to double the number of species for the
-        CTMC. (Recommended use with list(range(1, 2 * species + 1)))
+    :param collection: List that ranges from 1 to double the number of species for the CTMC.
+    :type collection: list[int]
+    :return: Nested lists with all the possible partitions of the n elements in the list in, at most, n subsets.
+    :rtype: list[list[int]]
     """
     if len(collection) == 1:
         yield [collection]
@@ -69,11 +66,10 @@ def set_partitions(species):
     position for the nucleotides. In the sense that partition
     [[1,2,3][4,5,6]] is converted into 1,1,1,2,2,2.
 
-    Parameters
-    ----------
-    species : int
-        Number of species for which we want to generate the
-        partitions.
+    :param species: Number of species for which we want to generate the partitions.
+    :type species: int
+    :return: Array with the set partitions for the given number of species.
+    :rtype: np.array
     """
     num_rows = bell_numbers(2 * species)
     num_cols = 2 * species
@@ -97,10 +93,10 @@ def translate_to_minimum(array):
     1,2,2,2,4,4. This function ensures that those partitions are
     reformatted as they should.
 
-    Parameters
-    ----------
-    array : np.array of int and shape (1, n_species*2)
-        Set partition to reformat.
+    :param array: Set partition to reformat.
+    :type array: np.array of int and shape (1, n_species*2)
+    :return: Set partition with the minimum values as they appear.
+    :rtype: np.array of int and shape (1, n_species*2)
     """
     unique_values = np.unique(array)
     value_map = {value: i + 1 for i, value in enumerate(np.sort(unique_values))}
@@ -108,7 +104,7 @@ def translate_to_minimum(array):
     return translated_array
 
 
-def find_revcoal_recomb(state_array, species, number_dict):
+def find_revcoal_recomb(state_array, species, state_dict):
     """
     Function that takes the state array and number of
     species as arguments, then returns all the possible
@@ -122,15 +118,14 @@ def find_revcoal_recomb(state_array, species, number_dict):
     species * 2 columns are the states after a reversible
     coalescence/before a recombination.
 
-    Also returns the number of reversible coalescences
-    (same number as recombinations).
-
-    Parameters
-    ----------
-    state_array : np.array of int and shape (n'th bell_number, n_species*2)
-        Set partition to reformat.
-    species: int
-        Number of species
+    :param state_array: Set partition of said number of species.
+    :type state_array: np.array of int and shape (n'th bell_number, n_species*2)
+    :param species: Number of species.
+    :type species: int
+    :param state_dict: Dictionary with tuple of each state as keys and corresponding number as values.
+    :type state_dict: dict
+    :return: Array with the reversible coalescences and recombinations.
+    :rtype: np.array
     """
     rev_coal_count = 0
     rev_coals = np.empty((0, species * 4 + 3), dtype=int)
@@ -158,23 +153,23 @@ def find_revcoal_recomb(state_array, species, number_dict):
 
                     new_coal_rec[0, : species * 2] = row
                     new_coal_rec[0, species * 2 : species * 4] = ordered_rev_coal
-                    new_coal_rec[0, species * 4] = number_dict[tuple(row)]
-                    new_coal_rec[0, species * 4 + 1] = number_dict[
+                    new_coal_rec[0, species * 4] = state_dict[tuple(row)]
+                    new_coal_rec[0, species * 4 + 1] = state_dict[
                         tuple(ordered_rev_coal)
                     ]
                     new_coal_rec[0, species * 4 + 2] = 1
 
                     new_coal_rec[1, : species * 2] = ordered_rev_coal
                     new_coal_rec[1, species * 2 : species * 4] = row
-                    new_coal_rec[1, species * 4] = number_dict[tuple(ordered_rev_coal)]
-                    new_coal_rec[1, species * 4 + 1] = number_dict[tuple(row)]
+                    new_coal_rec[1, species * 4] = state_dict[tuple(ordered_rev_coal)]
+                    new_coal_rec[1, species * 4 + 1] = state_dict[tuple(row)]
                     new_coal_rec[1, species * 4 + 2] = 2
 
                     rev_coals = np.vstack((rev_coals, new_coal_rec))
-    return rev_coals, rev_coal_count
+    return rev_coals
 
 
-def find_norevcoal(state_array, species, number_dict):
+def find_norevcoal(state_array, species, state_dict):
     """
     Function that takes the state array and number of
     species as arguments, then returns all the possible
@@ -186,14 +181,14 @@ def find_norevcoal(state_array, species, number_dict):
     species * 2 columns are the states after a non
     reversible coalescence/before a recombination.
 
-    Also returns the number of reversible coalescences.
-
-    Parameters
-    ----------
-    state_array : np.array of int and shape (n'th bell_number, n_species*2)
-        Set partition to reformat.
-    species: int
-        Number of species
+    :param state_array: Set partition of said number of species.
+    :type state_array: np.array of int and shape (n'th bell_number, n_species*2)
+    :param species: Number of species.
+    :type species: int
+    :param state_dict: Dictionary with tuple of each state as keys and corresponding number as values.
+    :type state_dict: dict[]
+    :return: Array with the non reversible coalescences.
+    :rtype: np.array
     """
     norevcoal_count = 0
     norev_coals = np.empty((0, species * 4 + 3), dtype=int)
@@ -227,8 +222,8 @@ def find_norevcoal(state_array, species, number_dict):
                             new_norev_coal[:, species * 2 : species * 4] = (
                                 ordered_norev_coal
                             )
-                            new_norev_coal[:, species * 4] = number_dict[tuple(row)]
-                            new_norev_coal[:, species * 4 + 1] = number_dict[
+                            new_norev_coal[:, species * 4] = state_dict[tuple(row)]
+                            new_norev_coal[:, species * 4 + 1] = state_dict[
                                 tuple(ordered_norev_coal)
                             ]
                             new_norev_coal[:, species * 4 + 2] = 1
@@ -257,31 +252,55 @@ def find_norevcoal(state_array, species, number_dict):
                             new_norev_coal[:, species * 2 : species * 4] = (
                                 ordered_norev_coal
                             )
-                            new_norev_coal[:, species * 4] = number_dict[tuple(row)]
-                            new_norev_coal[:, species * 4 + 1] = number_dict[
+                            new_norev_coal[:, species * 4] = state_dict[tuple(row)]
+                            new_norev_coal[:, species * 4 + 1] = state_dict[
                                 tuple(ordered_norev_coal)
                             ]
                             new_norev_coal[:, species * 4 + 2] = 1
 
                             norev_coals = np.vstack((norev_coals, new_norev_coal))
 
-    return norev_coals, norevcoal_count
+    return norev_coals
 
 
-def sums_mss(mss):
-    all_sums = [0]
-    for r in range(2, len(mss) + 1):
-        for combo in combinations(mss, r):
-            all_sums.append(sum(combo))
-    return all_sums
+# def sums_mss(mss):
+#     all_sums = [0]
+#     for r in range(2, len(mss) + 1):
+#         for combo in combinations(mss, r):
+#             all_sums.append(sum(combo))
+#     return all_sums
 
 
 @jit(nopython=True)
-def number_array(state_array, species, mss, tuple_omegas=Tuple((int64, int64))):
+def number_array_1(
+    state_array,
+    species,
+    mss,
+    tuple_omegas=Tuple((int64, int64)),
+    tuple_states=Tuple((int64, int64)),
+):
+    """
+    Function that, for the 1 species CTMC, generates two dictionaries.
+    Omega dict will keep track of where in the transition matrix each
+    coalescence state is located (keys are tuples of minimum incresing
+    substring sums, values are integers).
+    State dict will keep track of which number does each state take in
+    the matrix (keys are tuples of states, values are integers).
 
+    :param state_array: Array with every set partition of 1 species.
+    :type state_array: np.array of int and shape (n'th bell_number, n_species*2)
+    :param species: Number of species.
+    :type species: int
+    :param mss: List with the minimum increasing substring sums.
+    :type mss: list[int]
+    :param tuple_omegas: Tuple type for the omega dictionary, defined for the typed dictionary.
+    :type tuple_omegas: Tuple
+    :param tuple_states: Tuple type for states, defined for the typed dictionary.
+    :type tuple_states: Tuple
+    """
     total_states = bell_numbers(2 * species)
     state_dict = Dict.empty(
-        key_type=int64[:],
+        key_type=tuple_states,
         value_type=int64,
     )
     omega_dict = Dict.empty(
@@ -291,6 +310,7 @@ def number_array(state_array, species, mss, tuple_omegas=Tuple((int64, int64))):
 
     max_index = 2 * species + 1
     for i, row in enumerate(state_array):
+        state_tuple = (row[0], row[1])
         l_nucl = row[:species]
         l_nucl_counts = Dict.empty(
             key_type=int64,
@@ -352,7 +372,231 @@ def number_array(state_array, species, mss, tuple_omegas=Tuple((int64, int64))):
                 for k in r_nucl_counts[j]:
                     r_omega += mss[k - 1]
 
-        state_dict[i] = row
+        state_dict[state_tuple] = i
+
+        if (l_omega, r_omega) not in omega_dict:
+            omega_dict[(l_omega, r_omega)] = np.zeros(total_states, dtype=boolean)
+            omega_dict[(l_omega, r_omega)][i] = True
+        else:
+            omega_dict[(l_omega, r_omega)][i] = True
+
+    return omega_dict, state_dict
+
+
+@jit(nopython=True)
+def number_array_2(
+    state_array,
+    species,
+    mss,
+    tuple_omegas=Tuple((int64, int64)),
+    tuple_states=Tuple((int64, int64, int64, int64)),
+):
+    """
+    Function that, for the 2 species CTMC, generates two dictionaries.
+    Omega dict will keep track of where in the transition matrix each
+    coalescence state is located (keys are tuples of minimum incresing
+    substring sums, values are integers).
+    State dict will keep track of which number does each state take in
+    the matrix (keys are tuples of states, values are integers).
+
+    :param state_array: Array with every set partition of 2 species.
+    :type state_array: np.array of int and shape (n'th bell_number, n_species*2)
+    :param species: Number of species.
+    :type species: int
+    :param mss: List with the minimum increasing substring sums.
+    :type mss: list[int]
+    :param tuple_omegas: Tuple type for the omega dictionary, defined for the typed dictionary.
+    :type tuple_omegas: Tuple
+    :param tuple_states: Tuple type for states, defined for the typed dictionary.
+    :type tuple_states: Tuple
+    """
+    total_states = bell_numbers(2 * species)
+    state_dict = Dict.empty(
+        key_type=tuple_states,
+        value_type=int64,
+    )
+    omega_dict = Dict.empty(
+        key_type=tuple_omegas,
+        value_type=np.zeros(total_states, dtype=boolean),
+    )
+
+    max_index = 2 * species + 1
+    for i, row in enumerate(state_array):
+        state_tuple = (row[0], row[1], row[2], row[3])
+        l_nucl = row[:species]
+        l_nucl_counts = Dict.empty(
+            key_type=int64,
+            value_type=int64[:],
+        )
+        index_tracker = np.zeros((max_index, len(l_nucl)), dtype=int64) - 1
+
+        counts = np.zeros(max_index, dtype=np.int32)
+        for index, number in enumerate((l_nucl)):
+            current_count = counts[number]
+            index_tracker[number, current_count] = index
+            counts[number] += 1
+        number_entries = np.sum(counts > 0)
+        results_numbers = np.zeros(number_entries, dtype=int64)
+        results_indices = []
+        result_index = 0
+        for number in range(max_index):
+            if counts[number] > 0:
+                results_numbers[result_index] = number
+                results_indices.append(index_tracker[number, : counts[number]])
+                result_index += 1
+        for number, indices in zip(results_numbers, results_indices):
+            l_nucl_counts[number] = indices
+
+        r_nucl = row[species:]
+        r_nucl_counts = Dict.empty(
+            key_type=int64,
+            value_type=int64[:],
+        )
+        index_tracker = np.zeros((max_index, len(r_nucl)), dtype=int64) - 1
+        counts = np.zeros(max_index, dtype=int64)
+        for index, number in enumerate((r_nucl)):
+            current_count = counts[number]
+            index_tracker[number, current_count] = index
+            counts[number] += 1
+
+        number_entries = np.sum(counts > 0)
+        results_numbers = np.zeros(number_entries, dtype=int64)
+        results_indices = []
+        result_index = 0
+        for number in range(max_index):
+            if counts[number] > 0:
+                results_numbers[result_index] = number
+                results_indices.append(index_tracker[number, : counts[number]])
+                result_index += 1
+        for number, indices in zip(results_numbers, results_indices):
+            r_nucl_counts[number] = indices
+
+        l_omega = 0
+        r_omega = 0
+
+        for j in set(l_nucl):
+            if len(l_nucl_counts[j]) > 1:
+                for k in l_nucl_counts[j]:
+                    l_omega += mss[k - 1]
+
+        for j in set(r_nucl):
+            if len(r_nucl_counts[j]) > 1:
+                for k in r_nucl_counts[j]:
+                    r_omega += mss[k - 1]
+
+        state_dict[state_tuple] = i
+
+        if (l_omega, r_omega) not in omega_dict:
+            omega_dict[(l_omega, r_omega)] = np.zeros(total_states, dtype=boolean)
+            omega_dict[(l_omega, r_omega)][i] = True
+        else:
+            omega_dict[(l_omega, r_omega)][i] = True
+
+    return omega_dict, state_dict
+
+
+@jit(nopython=True)
+def number_array_3(
+    state_array,
+    species,
+    mss,
+    tuple_omegas=Tuple((int64, int64)),
+    tuple_states=Tuple((int64, int64, int64, int64, int64, int64)),
+):
+    """
+    Function that, for the 3 species CTMC, generates two dictionaries.
+    Omega dict will keep track of where in the transition matrix each
+    coalescence state is located (keys are tuples of minimum incresing
+    substring sums, values are integers).
+    State dict will keep track of which number does each state take in
+    the matrix (keys are tuples of states, values are integers).
+
+    :param state_array: Array with every set partition of 3 species.
+    :type state_array: np.array of int and shape (n'th bell_number, n_species*2)
+    :param species: Number of species.
+    :type species: int
+    :param mss: List with the minimum increasing substring sums.
+    :type mss: list[int]
+    :param tuple_omegas: Tuple type for the omega dictionary, defined for the typed dictionary.
+    :type tuple_omegas: Tuple
+    :param tuple_states: Tuple type for states, defined for the typed dictionary.
+    :type tuple_states: Tuple
+    """
+    total_states = bell_numbers(2 * species)
+    state_dict = Dict.empty(
+        key_type=tuple_states,
+        value_type=int64,
+    )
+    omega_dict = Dict.empty(
+        key_type=tuple_omegas,
+        value_type=np.zeros(total_states, dtype=boolean),
+    )
+
+    max_index = 2 * species + 1
+    for i, row in enumerate(state_array):
+        state_tuple = (row[0], row[1], row[2], row[3], row[4], row[5])
+        l_nucl = row[:species]
+        l_nucl_counts = Dict.empty(
+            key_type=int64,
+            value_type=int64[:],
+        )
+        index_tracker = np.zeros((max_index, len(l_nucl)), dtype=int64) - 1
+
+        counts = np.zeros(max_index, dtype=np.int32)
+        for index, number in enumerate((l_nucl)):
+            current_count = counts[number]
+            index_tracker[number, current_count] = index
+            counts[number] += 1
+        number_entries = np.sum(counts > 0)
+        results_numbers = np.zeros(number_entries, dtype=int64)
+        results_indices = []
+        result_index = 0
+        for number in range(max_index):
+            if counts[number] > 0:
+                results_numbers[result_index] = number
+                results_indices.append(index_tracker[number, : counts[number]])
+                result_index += 1
+        for number, indices in zip(results_numbers, results_indices):
+            l_nucl_counts[number] = indices
+
+        r_nucl = row[species:]
+        r_nucl_counts = Dict.empty(
+            key_type=int64,
+            value_type=int64[:],
+        )
+        index_tracker = np.zeros((max_index, len(r_nucl)), dtype=int64) - 1
+        counts = np.zeros(max_index, dtype=int64)
+        for index, number in enumerate((r_nucl)):
+            current_count = counts[number]
+            index_tracker[number, current_count] = index
+            counts[number] += 1
+
+        number_entries = np.sum(counts > 0)
+        results_numbers = np.zeros(number_entries, dtype=int64)
+        results_indices = []
+        result_index = 0
+        for number in range(max_index):
+            if counts[number] > 0:
+                results_numbers[result_index] = number
+                results_indices.append(index_tracker[number, : counts[number]])
+                result_index += 1
+        for number, indices in zip(results_numbers, results_indices):
+            r_nucl_counts[number] = indices
+
+        l_omega = 0
+        r_omega = 0
+
+        for j in set(l_nucl):
+            if len(l_nucl_counts[j]) > 1:
+                for k in l_nucl_counts[j]:
+                    l_omega += mss[k - 1]
+
+        for j in set(r_nucl):
+            if len(r_nucl_counts[j]) > 1:
+                for k in r_nucl_counts[j]:
+                    r_omega += mss[k - 1]
+
+        state_dict[state_tuple] = i
 
         if (l_omega, r_omega) not in omega_dict:
             omega_dict[(l_omega, r_omega)] = np.zeros(total_states, dtype=boolean)
@@ -377,38 +621,44 @@ def get_trans_mat(transition_mat, species, coal, rho):
     return trans_prob_array
 
 
-def wrapper_state(species):
-    """
-    This function takes as arguments the number of species and creates the state space (transition matrix).
-    It then returns the transitions between "species" number of species which can be used to generate the transition probability array.
+species = 1
+mss = [2**i for i in range(species)]
+state_array_1 = set_partitions(species)
+omega_dict_1, state_dict_1 = number_array_1(state_array_1, species, mss)
+coal_and_rec_1 = find_revcoal_recomb(state_array_1, species, state_dict_1)
+norev_coals_1 = find_norevcoal(state_array_1, species, state_dict_1)
+transitions_1 = np.vstack((coal_and_rec_1, norev_coals_1))
 
-    Args:
-        species (int): The number of species.
+species = 2
+mss = [2**i for i in range(species)]
+state_array_2 = set_partitions(species)
+omega_dict_2, state_dict_2 = number_array_2(state_array_2, species, mss)
+coal_and_rec_2 = find_revcoal_recomb(state_array_2, species, state_dict_2)
+norev_coals_2 = find_norevcoal(state_array_2, species, state_dict_2)
+transitions_2 = np.vstack((coal_and_rec_2, norev_coals_2))
 
-    Returns:
-        numpy.ndarray: The transitions coded as 1 (coal) or 2 (rec).
-    """
-
-    mss = [2**i for i in range(species)]
-    state_array = set_partitions(species)
-
-    omega_dict, state_dict = number_array(state_array, species, mss)
-    print("State array done")
-    print(state_array)
-    print()
-    print(omega_dict)
-    print()
-    print(state_dict)
-    coal_and_rec, revcoalcount = find_revcoal_recomb(state_array, species, state_dict)
-    norev_coals, norevcoalcount = find_norevcoal(state_array, species, state_dict)
-    transitions = np.vstack((coal_and_rec, norev_coals))
-    return transitions, omega_dict, state_dict
-
-
-transitions_1, omega_dict_1, state_dict_1 = wrapper_state(1)
+species = 3
+mss = [2**i for i in range(species)]
+state_array_3 = set_partitions(species)
+omega_dict_3, state_dict_3 = number_array_3(state_array_3, species, mss)
+coal_and_rec_3 = find_revcoal_recomb(state_array_3, species, state_dict_3)
+norev_coals_3 = find_norevcoal(state_array_3, species, state_dict_3)
+transitions_3 = np.vstack((coal_and_rec_3, norev_coals_3))
 
 print(transitions_1)
 print()
 print(omega_dict_1)
 print()
 print(state_dict_1)
+
+print(transitions_2)
+print()
+print(omega_dict_2)
+print()
+print(state_dict_2)
+
+print(transitions_3)
+print()
+print(omega_dict_3)
+print()
+print(state_dict_3)
