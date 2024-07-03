@@ -379,7 +379,7 @@ def number_array_1(
             omega_dict[(l_omega, r_omega)][i] = True
         else:
             omega_dict[(l_omega, r_omega)][i] = True
-
+    omega_dict[(-1, -1)] = np.ones(total_states, dtype=boolean)
     return omega_dict, state_dict
 
 
@@ -491,7 +491,7 @@ def number_array_2(
             omega_dict[(l_omega, r_omega)][i] = True
         else:
             omega_dict[(l_omega, r_omega)][i] = True
-
+    omega_dict[(-1, -1)] = np.ones(total_states, dtype=boolean)
     return omega_dict, state_dict
 
 
@@ -603,6 +603,7 @@ def number_array_3(
             omega_dict[(l_omega, r_omega)][i] = True
         else:
             omega_dict[(l_omega, r_omega)][i] = True
+    omega_dict[(-1, -1)] = np.ones(total_states, dtype=boolean)
 
     return omega_dict, state_dict
 
