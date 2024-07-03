@@ -621,44 +621,34 @@ def get_trans_mat(transition_mat, species, coal, rho):
     return trans_prob_array
 
 
-species = 1
-mss = [2**i for i in range(species)]
-state_array_1 = set_partitions(species)
-omega_dict_1, state_dict_1 = number_array_1(state_array_1, species, mss)
-coal_and_rec_1 = find_revcoal_recomb(state_array_1, species, state_dict_1)
-norev_coals_1 = find_norevcoal(state_array_1, species, state_dict_1)
-transitions_1 = np.vstack((coal_and_rec_1, norev_coals_1))
+def wrapper_state_1():
+    species = 1
+    mss = [2**i for i in range(species)]
+    state_array_1 = set_partitions(species)
+    omega_dict_1, state_dict_1 = number_array_1(state_array_1, species, mss)
+    coal_and_rec_1 = find_revcoal_recomb(state_array_1, species, state_dict_1)
+    norev_coals_1 = find_norevcoal(state_array_1, species, state_dict_1)
+    transitions_1 = np.vstack((coal_and_rec_1, norev_coals_1))
+    return transitions_1, omega_dict_1, state_dict_1
 
-species = 2
-mss = [2**i for i in range(species)]
-state_array_2 = set_partitions(species)
-omega_dict_2, state_dict_2 = number_array_2(state_array_2, species, mss)
-coal_and_rec_2 = find_revcoal_recomb(state_array_2, species, state_dict_2)
-norev_coals_2 = find_norevcoal(state_array_2, species, state_dict_2)
-transitions_2 = np.vstack((coal_and_rec_2, norev_coals_2))
 
-species = 3
-mss = [2**i for i in range(species)]
-state_array_3 = set_partitions(species)
-omega_dict_3, state_dict_3 = number_array_3(state_array_3, species, mss)
-coal_and_rec_3 = find_revcoal_recomb(state_array_3, species, state_dict_3)
-norev_coals_3 = find_norevcoal(state_array_3, species, state_dict_3)
-transitions_3 = np.vstack((coal_and_rec_3, norev_coals_3))
+def wrapper_state_2():
+    species = 2
+    mss = [2**i for i in range(species)]
+    state_array_2 = set_partitions(species)
+    omega_dict_2, state_dict_2 = number_array_2(state_array_2, species, mss)
+    coal_and_rec_2 = find_revcoal_recomb(state_array_2, species, state_dict_2)
+    norev_coals_2 = find_norevcoal(state_array_2, species, state_dict_2)
+    transitions_2 = np.vstack((coal_and_rec_2, norev_coals_2))
+    return transitions_2, omega_dict_2, state_dict_2
 
-print(transitions_1)
-print()
-print(omega_dict_1)
-print()
-print(state_dict_1)
 
-print(transitions_2)
-print()
-print(omega_dict_2)
-print()
-print(state_dict_2)
-
-print(transitions_3)
-print()
-print(omega_dict_3)
-print()
-print(state_dict_3)
+def wrapper_state_3():
+    species = 3
+    mss = [2**i for i in range(species)]
+    state_array_3 = set_partitions(species)
+    omega_dict_3, state_dict_3 = number_array_3(state_array_3, species, mss)
+    coal_and_rec_3 = find_revcoal_recomb(state_array_3, species, state_dict_3)
+    norev_coals_3 = find_norevcoal(state_array_3, species, state_dict_3)
+    transitions_3 = np.vstack((coal_and_rec_3, norev_coals_3))
+    return transitions_3, omega_dict_3, state_dict_3
