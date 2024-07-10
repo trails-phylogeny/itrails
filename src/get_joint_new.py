@@ -1,8 +1,14 @@
 import numpy as np
-from trans_mat import get_trans_mat, wrapper_state_1, wrapper_state_2, wrapper_state_3
+from trans_mat import (
+    get_trans_mat,
+    wrapper_state_1,
+    wrapper_state_2,
+    wrapper_state_3,
+    wrapper_state_general,
+)
 from expm import expm
 from cut_times import cutpoints_AB, cutpoints_ABC, get_times
-from combine_states import combine_states
+from combine_states import combine_states_general
 from numba.typed import Dict
 from numba.types import Tuple, int64
 from numba import jit
@@ -101,6 +107,7 @@ def get_final_per_interval(trans_mat_ab, times, omega_dict, pi_AB):
 
         for key, value in omega_dict.items():
             for key2, value2 in omega_dict.items():
+                # implement omega dict
                 if key[0] <= key2[0] and key[1] <= key2[1]:
                     sliced_mat = np.diag(value) @ exponential_time @ np.diag(value2)
                     each_time_dict[(key, key2)] = sliced_mat
@@ -124,6 +131,55 @@ def get_final_per_interval(trans_mat_ab, times, omega_dict, pi_AB):
     return accumulated_results, final_prob_vector
 
 
+def get_final_per_interval_noif(
+    trans_mat_ab, times, omega_dict, pi_AB, omega_nonrev_counts
+):
+
+    accumulated_results = {}
+    all_omegas = (-1, -1)
+    exponential_time_0 = expm(trans_mat_ab * times[0])
+    for key, value in omega_dict.items():
+        sliced_mat = exponential_time_0 @ np.diag(value)
+        accumulated_results[(all_omegas, key)] = sliced_mat
+
+    for i in range(1, len(times)):
+        exponential_time = expm(trans_mat_ab * times[i])
+        each_time_dict = {}
+        actual_results = {}
+
+        for omega_init, value in omega_dict.items():
+            for omega_fin, value2 in omega_dict.items():
+                if (
+                    omega_init[0] == omega_fin[0]
+                    or omega_nonrev_counts[omega_init[0]]
+                    < omega_nonrev_counts[omega_fin[0]]
+                ) and (
+                    omega_init[1] == omega_fin[1]
+                    or omega_nonrev_counts[omega_init[1]]
+                    < omega_nonrev_counts[omega_fin[1]]
+                ):
+                    sliced_mat = np.diag(value) @ exponential_time @ np.diag(value2)
+                    each_time_dict[(omega_init, omega_fin)] = sliced_mat
+
+        for transition_0, matrix_0 in accumulated_results.items():
+            end_state = transition_0[-1]
+            for transition_1, matrix_1 in each_time_dict.items():
+                start_state = transition_1[0]
+                if start_state == end_state:
+                    result = matrix_0 @ matrix_1
+                    actual_results[(*transition_0, transition_1[1])] = result
+                else:
+                    continue
+        accumulated_results = actual_results
+
+    final_prob_vector = {}
+    for path, matrix in accumulated_results.items():
+        pi_slice = pi_AB @ matrix
+        final_prob_vector[path] = pi_slice
+
+    return final_prob_vector
+
+
 def get_joint_prob_mat(
     t_A,
     t_B,
@@ -141,38 +197,40 @@ def get_joint_prob_mat(
     coal_ABC,
     n_int_AB,
     # n_int_ABC,
-    p_init_A=np.array([0, 1], dtype=np.float64),
-    p_init_B=np.array([0, 1], dtype=np.float64),
-    p_init_C=np.array([0, 1], dtype=np.float64),
     cut_AB="standard",
     # cut_ABC="standard",
     # tmp_path="./",
 ):
 
-    ## This wouold be faster reading from csv but I think generating it from scratch is more mantainable
-    # State space 1 seq
-    transitions_1, omega_dict_1, state_dict_1 = wrapper_state_1()
-    # State space 2 seq
-    transitions_2, omega_dict_2, state_dict_2 = wrapper_state_2()
-    # State space 3 seq
-    transitions_3, omega_dict_3, state_dict_3 = wrapper_state_3()
-    # Get transition matrix for A
+    # Get state spaces
+    transitions_1, omega_dict_1, state_dict_1, omega_nonrev_counts_1 = (
+        wrapper_state_general(1)
+    )
+    transitions_2, omega_dict_2, state_dict_2, omega_nonrev_counts_2 = (
+        wrapper_state_general(2)
+    )
+    transitions_3, omega_dict_3, state_dict_3, omega_nonrev_counts_3 = (
+        wrapper_state_general(3)
+    )
+    # Get transition matrices
     trans_mat_a = get_trans_mat(transitions_1, 1, coal_A, rho_A)
-    # Get transition matrix for B
     trans_mat_b = get_trans_mat(transitions_1, 1, coal_B, rho_B)
-    # Get transition matrix for C
     trans_mat_c = get_trans_mat(transitions_1, 1, coal_C, rho_C)
-    # Get transition matrix for AB
     trans_mat_ab = get_trans_mat(transitions_2, 2, coal_AB, rho_AB)
-    # Get transition matrix for ABC
     trans_mat_abc = get_trans_mat(transitions_3, 3, coal_ABC, rho_ABC)
 
-    # Get final probs A
-    final_A = p_init_A @ expm(trans_mat_a * t_A)
-    # Get final probs B
-    final_B = p_init_B @ expm(trans_mat_b * t_B)
-    # Get final probs C
-    final_C = p_init_C @ expm(trans_mat_c * t_C)
+    # Get initial probabilities of 1seq CTMC
+    pi_1seq = np.zeros(2)
+    pi_1seq[state_dict_1[(1, 1)]] = 1
+    pi_A = pi_B = pi_C = pi_1seq
+
+    # Get final probabilities of 1seq CTMC
+    final_A = {}
+    final_A[0] = pi_A @ expm(trans_mat_a * t_A)
+    final_B = {}
+    final_B[0] = pi_B @ expm(trans_mat_b * t_B)
+    final_C = {}
+    final_C[0] = pi_C @ expm(trans_mat_c * t_C)
 
     # Dicts to know position of hidden states in the prob matrix.
     number_dict_A = state_dict_1
@@ -182,22 +240,23 @@ def get_joint_prob_mat(
     number_dict_ABC = state_dict_3
 
     # Combine A and B CTMCs
-    pi_AB = combine_states(
+    pi_AB = combine_states_general(
         number_dict_A, number_dict_B, number_dict_AB, final_A, final_B
     )
+
     # Get cutopints and times based on cutopoints.
     if isinstance(cut_AB, str):
         cut_AB = cutpoints_AB(n_int_AB, t_AB, coal_AB)
     times_AB = get_times(cut_AB, list(range(len(cut_AB))))
 
-    accumulated_results, final_prob_vector = get_final_per_interval(
-        trans_mat_ab, times_AB, omega_dict_2, pi_AB
+    final_prob_vector = get_final_per_interval_noif(
+        trans_mat_ab, times_AB, omega_dict_2, pi_AB, omega_nonrev_counts_2
     )
 
-    return accumulated_results, final_prob_vector
+    return final_prob_vector
 
 
-accumulated_results, final_prob_vector = get_joint_prob_mat(
+final_prob_vector = get_joint_prob_mat(
     t_A=10,
     t_B=10,
     t_AB=20,
@@ -213,81 +272,8 @@ accumulated_results, final_prob_vector = get_joint_prob_mat(
     coal_C=0.5,
     coal_ABC=0.4,
     n_int_AB=3,
-    p_init_A=np.array([0, 1], dtype=np.float64),
-    p_init_B=np.array([0, 1], dtype=np.float64),
-    p_init_C=np.array([0, 1], dtype=np.float64),
+    # p_init_A=np.array([1, 0], dtype=np.float64),
+    # p_init_B=np.array([1, 0], dtype=np.float64),
+    # p_init_C=np.array([0, 1], dtype=np.float64),
     cut_AB="standard",
 )
-
-print(accumulated_results)
-print()
-print(final_prob_vector)
-
-""" 
-0. Probar con 0s - HECHO, 1 orden de magnitud + rápido
-
-0. GitHub - HECHO, invitación a Iker
-
-1. njitear - NO, sigo usando dictionaries, pensar forma de cambiarlo
-
-2. modificar function para que returnee las cosas separadas - NO/HECHO, cambiar implementación de combine_states
-
-3. Se puede hacer independiente y luego juntar sumarlos todos y tenener init vec, combinar
-con final_C y con eso start prob de 3 seq). Podemos generar todos los paths sin tener en cuenta lo del principio.
-
-4. La info del omega que empieza esta en pi_ABC.
-
-Siguiente paso mismo concepto pero condicionar en cutpoints en los posibles paths
-Despues seria matchear 2 spec and 3 spec. Si cogemos un path especifico en la join tprob matrix saber donde esta.
-
-Hay poca info en 1 seq para ne. En trails original igualamos las ne.
-
-Mantemeos variable y cuando hagamos la optimizacion ponemos que estandar sea la misma ne.
-
---IDEAS DURANTE LA SEMANA
-
-Utilzar 0s ha hecho la implementacion 1 orden de magnitud más rapida.
-
-Github organization hecha, invitar a Iker, antes de crear el repo quiero tener más o menos limpio este código, mid June código limpio.
-
-Quiero dedicar tiempo a limpiar lo que tengo también, puedo quitar muchos diccionarios ahora
-que usamos 0 porque ya esta implicit que omegas pueden ser y cuales no en los 0 del vector.
-
-Pensar como pasarlo al 3 sequence, esta semana y hasta el 7 de junio no voy a tener demasiado tiempo por examenes.
-
---REUNION 28/5
-3D numpy array.
-GPU?
-Estructura de package
-Modules
-
-
-
-Ideas Post-Examenes
-- Hay cosas que solo se tienen que callear una vez como por ejemplo los numeritos de omega
-etc, se podría dar como args a la función general y que todo lo de la general pueda estar
-jitted porque hay mucho forloop.
-
-- Numba permite usar typed dict, implementado:
-    - Los omegas con numba en typed dict
-    - Casi todo el array de numeros etc con numba salvo lexsort, buscar como
-    - GPU: Hay una forma de speed up matrix multiplication using numba+CUDA (https://nyu-cds.github.io/python-numba/05-cuda/)
-
-    
-12/6/24
-    - Preallocate en omegas
-    - Benchmark matmul CUDA
-
-Week 25
-    - Benchmark matmul CUDA-más lento, creo que puede ser porque
-    al pasar a grafica y sacar de grafica se tarda tiempo y no se
-    compensa con la mejora en velocidad sobre el @
-
-    - Implementados los omegas con binary encoding de un vector
-    con np.where se sacan los indices para la matrix
-
-
-    - Binary en vez de int64.
-    - En number array no hace falta forzar el orden.
-    - No hace falta guardar cada estado en number_array, solo los omegas.
- """
