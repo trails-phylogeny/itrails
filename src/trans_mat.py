@@ -263,14 +263,6 @@ def find_norevcoal(state_array, species, state_dict):
     return norev_coals
 
 
-# def sums_mss(mss):
-#     all_sums = [0]
-#     for r in range(2, len(mss) + 1):
-#         for combo in combinations(mss, r):
-#             all_sums.append(sum(combo))
-#     return all_sums
-
-
 @jit(nopython=True)
 def number_array_1(
     state_array,
@@ -622,6 +614,20 @@ def get_trans_mat(transition_mat, species, coal, rho):
     return trans_prob_array
 
 
+def get_omega_nonrev_counts(species):
+
+    omega_nonrev_counts = Dict.empty(
+        key_type=int64,
+        value_type=int64,
+    )
+    mss = [2**i for i in range(species)]
+
+    for size in range(1, len(mss) + 1):
+        for subset in combinations(mss, size):
+            omega_nonrev_counts[sum(subset)] = len(subset) - 1
+    return omega_nonrev_counts
+
+
 def wrapper_state_1():
     """
     Wrapper function that returns the transition matrix,
@@ -634,10 +640,11 @@ def wrapper_state_1():
     mss = [2**i for i in range(species)]
     state_array_1 = set_partitions(species)
     omega_dict_1, state_dict_1 = number_array_1(state_array_1, species, mss)
+    omega_nonrev_counts = get_omega_nonrev_counts(species)
     coal_and_rec_1 = find_revcoal_recomb(state_array_1, species, state_dict_1)
     norev_coals_1 = find_norevcoal(state_array_1, species, state_dict_1)
     transitions_1 = np.vstack((coal_and_rec_1, norev_coals_1))
-    return transitions_1, omega_dict_1, state_dict_1
+    return transitions_1, omega_dict_1, state_dict_1, omega_nonrev_counts
 
 
 def wrapper_state_2():
@@ -652,10 +659,11 @@ def wrapper_state_2():
     mss = [2**i for i in range(species)]
     state_array_2 = set_partitions(species)
     omega_dict_2, state_dict_2 = number_array_2(state_array_2, species, mss)
+    omega_nonrev_counts = get_omega_nonrev_counts(species)
     coal_and_rec_2 = find_revcoal_recomb(state_array_2, species, state_dict_2)
     norev_coals_2 = find_norevcoal(state_array_2, species, state_dict_2)
     transitions_2 = np.vstack((coal_and_rec_2, norev_coals_2))
-    return transitions_2, omega_dict_2, state_dict_2
+    return transitions_2, omega_dict_2, state_dict_2, omega_nonrev_counts
 
 
 def wrapper_state_3():
@@ -670,7 +678,8 @@ def wrapper_state_3():
     mss = [2**i for i in range(species)]
     state_array_3 = set_partitions(species)
     omega_dict_3, state_dict_3 = number_array_3(state_array_3, species, mss)
+    omega_nonrev_counts = get_omega_nonrev_counts(species)
     coal_and_rec_3 = find_revcoal_recomb(state_array_3, species, state_dict_3)
     norev_coals_3 = find_norevcoal(state_array_3, species, state_dict_3)
     transitions_3 = np.vstack((coal_and_rec_3, norev_coals_3))
-    return transitions_3, omega_dict_3, state_dict_3
+    return transitions_3, omega_dict_3, state_dict_3, omega_nonrev_counts
