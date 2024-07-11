@@ -196,9 +196,9 @@ def get_joint_prob_mat(
     coal_C,
     coal_ABC,
     n_int_AB,
-    # n_int_ABC,
+    n_int_ABC,
     cut_AB="standard",
-    # cut_ABC="standard",
+    cut_ABC="standard",
     # tmp_path="./",
 ):
 
@@ -249,14 +249,23 @@ def get_joint_prob_mat(
         cut_AB = cutpoints_AB(n_int_AB, t_AB, coal_AB)
     times_AB = get_times(cut_AB, list(range(len(cut_AB))))
 
-    final_prob_vector = get_final_per_interval_noif(
+    final_AB = get_final_per_interval_noif(
         trans_mat_ab, times_AB, omega_dict_2, pi_AB, omega_nonrev_counts_2
     )
 
-    return final_prob_vector
+    pi_ABC = combine_states_general(
+        number_dict_AB, number_dict_C, number_dict_ABC, final_AB, final_C
+    )
+
+    if isinstance(cut_ABC, str):
+        cut_ABC = cutpoints_ABC(n_int_AB, coal_ABC)
+    times_ABC = get_times(cut_ABC, list(range(len(cut_ABC))))
+
+    return pi_ABC
 
 
-final_prob_vector = get_joint_prob_mat(
+time0 = time.time()
+times_ABC = get_joint_prob_mat(
     t_A=10,
     t_B=10,
     t_AB=20,
@@ -276,4 +285,35 @@ final_prob_vector = get_joint_prob_mat(
     # p_init_B=np.array([1, 0], dtype=np.float64),
     # p_init_C=np.array([0, 1], dtype=np.float64),
     cut_AB="standard",
+    cut_ABC="standard",
+    n_int_ABC=3,
 )
+time1 = time.time()
+print(f"Time precomputing: {time1 - time0}")
+
+time0 = time.time()
+times_ABC = get_joint_prob_mat(
+    t_A=10,
+    t_B=10,
+    t_AB=20,
+    t_C=20,
+    rho_A=0.3,
+    rho_B=0.4,
+    rho_AB=0.6,
+    rho_C=0.3,
+    rho_ABC=0.4,
+    coal_A=0.6,
+    coal_B=0.4,
+    coal_AB=0.2,
+    coal_C=0.5,
+    coal_ABC=0.4,
+    n_int_AB=3,
+    # p_init_A=np.array([1, 0], dtype=np.float64),
+    # p_init_B=np.array([1, 0], dtype=np.float64),
+    # p_init_C=np.array([0, 1], dtype=np.float64),
+    cut_AB="standard",
+    cut_ABC="standard",
+    n_int_ABC=3,
+)
+time1 = time.time()
+print(f"Time without precomputing: {time1 - time0}")
