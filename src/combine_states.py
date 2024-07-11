@@ -1,5 +1,6 @@
 import numpy as np
 
+""" 
 final_a = np.array([0.66658439, 0.33341561])
 final_b = np.array([0.50016773, 0.49983227])
 final_a_dict = {(0): np.array([0.66658439, 0.33341561])}
@@ -539,27 +540,6 @@ state_dict_abc = {
     (1, 2, 3, 4, 5, 6): 202,
 }
 
-""" 
-pi_dict = {}
-if len(final_probs_1.keys()) > 1 and len(final_probs_2.keys()) > 1:
-    for path1, prob1 in final_probs_1.items():
-        for path2, prob2 in final_probs_2.items():
-            raise NotImplementedError
-
-elif len(final_probs_1.keys()) > 1 and len(final_probs_2.keys()) == 1:
-    for path1, prob1 in final_probs_1.items():
-        prob2 = final_probs_2[0]
-        pi_vector_combined = combine_states(state_dict_1, state_dict_2, state_dict_sum, prob1, prob2)
-        pi_dict[path1] = pi_vector_combined
-    return pi_dict
-
-elif len(final_probs_1.keys()) == 1 and len(final_probs_2.keys()) == 1:
-    prob1 = final_probs_1[0]
-    prob2 = final_probs_2[0]
-    pi_vector_combined = combine_states(state_dict_1, state_dict_2, state_dict_sum, prob1, prob2)
-    return pi_vector_combined
-else:
-    raise Exception("Invalid final_probs_1 or final_probs_2")
  """
 
 
@@ -640,9 +620,11 @@ def combine_states_general(
         raise Exception("Invalid final_probs_1 or final_probs_2")
 
 
+""" 
 combined = combine_states(state_dict_a, state_dict_b, state_dict_ab, final_a, final_b)
 new_combined = combine_states_general(
     state_dict_ab, state_dict_c, state_dict_abc, final_ab_dict, final_c_dict
 )
 
 print(new_combined)
+ """
