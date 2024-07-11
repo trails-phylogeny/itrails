@@ -614,6 +614,7 @@ def combine_states_general(
     state_dict_1, state_dict_2, state_dict_sum, final_probs_1, final_probs_2
 ):
     pi_dict = {}
+    # Open implementation for possible 4 species
     if len(final_probs_1.keys()) > 1 and len(final_probs_2.keys()) > 1:
         # for path1, prob1 in final_probs_1.items():
         # for path2, prob2 in final_probs_2.items():
