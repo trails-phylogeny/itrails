@@ -1,10 +1,23 @@
 import numpy as np
 from expm import expm
+from scipy.sparse import csr_matrix
+import time
 from trans_mat import wrapper_state_general, get_trans_mat
 
+subpath_1 = [((3, 0), (3, 3)), ((3, 3), (7, 3)), ((7, 3), (7, 7))]
+subpath_2 = [((3, 0), (3, 3)), ((3, 3), (3, 7)), ((3, 7), (7, 7))]
+subpath_3 = [((3, 0), (7, 0)), ((7, 0), (7, 3)), ((7, 3), (7, 7))]
+subpath_4 = [((3, 0), (7, 3)), ((7, 3), (7, 7))]
+subpath_5 = [((3, 0), (3, 3)), ((3, 3), (7, 7))]
 
-subpath_dm = [((7, 0), (7, 3)), ((7, 3), (7, 7))]
-time = 1
+
+sub_1 = [((7, 0), (7, 3)), ((7, 3), (7, 7))]
+
+np.set_printoptions(threshold=np.inf)
+
+subpath_list = [subpath_1, subpath_2, subpath_3, subpath_4, subpath_5]
+
+tim = 1
 
 transitions_3, omega_dict_3, state_dict_3, omega_nonrev_counts_3 = (
     wrapper_state_general(3)
@@ -33,28 +46,7 @@ trans_mat_ab = get_trans_mat(transitions_2, 2, coal_AB, rho_AB)
 trans_mat_abc = get_trans_mat(transitions_3, 3, coal_ABC, rho_ABC)
 
 
-def vanloan_general(trans_mat, subpath, time, omega_dict):
-    """
-    This function performs the van Loan (1978) method for
-    finding the integral of a series of 2 multiplying matrix
-    exponentials.
-
-    Parameters
-    ----------
-    trans_mat : numeric numpy matrix
-        Transition rate matrix.
-    tup : tupple
-        Tupple of size 2, where the first and second entries
-        are lists with the indices of the transition rate
-        matrix to go from and to in the first instantaneous
-        transition.
-    omega_start : list of integers
-        List of starting states of the transition rate matrix.
-    omega_end : list of integers
-        List of ending states of the transition rate matrix.
-    time : float
-        Upper boundary of the definite integral.
-    """
+def vanloan_general(trans_mat, subpath, tim, omega_dict):
     n = trans_mat.shape[0]
     steps = len(subpath)
     C_mat = np.zeros((n * steps, n * steps))
@@ -75,11 +67,16 @@ def vanloan_general(trans_mat, subpath, time, omega_dict):
 
     result = (
         np.diag(omega_dict[omega_init])
-        @ (expm(C_mat * (time))[0:n, -n:])
+        @ (expm(C_mat * (tim))[0:n, -n:])
         @ np.diag(omega_dict[omega_fin])
     )
     return result
 
 
-result = vanloan_general(trans_mat_abc, subpath_dm, time, omega_dict_3)
-print(result)
+result = vanloan_general(trans_mat_abc, sub_1, tim, omega_dict_3)
+time0 = time.time()
+result = vanloan_general(trans_mat_abc, sub_1, tim, omega_dict_3)
+time1 = time.time()
+sparse = csr_matrix(result)
+print(f"Done! Time: {time1- time0}")
+print(result.sum())
