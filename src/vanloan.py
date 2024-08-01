@@ -13,8 +13,6 @@ subpath_5 = [((3, 0), (3, 3)), ((3, 3), (7, 7))]
 
 sub_1 = [((7, 0), (7, 3)), ((7, 3), (7, 7))]
 
-np.set_printoptions(threshold=np.inf)
-
 subpath_list = [subpath_1, subpath_2, subpath_3, subpath_4, subpath_5]
 
 tim = 1
@@ -75,7 +73,7 @@ def vanloan_general(trans_mat, subpath, tim, omega_dict):
 
 result = vanloan_general(trans_mat_abc, sub_1, tim, omega_dict_3)
 time0 = time.time()
-result = vanloan_general(trans_mat_abc, sub_1, tim, omega_dict_3)
+result = vanloan_general(trans_mat_abc, subpath_3, tim, omega_dict_3)
 time1 = time.time()
 sparse = csr_matrix(result)
 print(f"Done! Time: {time1- time0}")
