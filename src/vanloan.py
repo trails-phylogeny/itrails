@@ -71,10 +71,16 @@ def vanloan_general(trans_mat, subpath, tim, omega_dict):
     return result
 
 
-result = vanloan_general(trans_mat_abc, sub_1, tim, omega_dict_3)
+vanloan_general(trans_mat_abc, sub_1, tim, omega_dict_3)
+results = 0
 time0 = time.time()
-result = vanloan_general(trans_mat_abc, subpath_3, tim, omega_dict_3)
+for subpath in subpath_list:
+    result = vanloan_general(trans_mat_abc, subpath, tim, omega_dict_3)
+    print(subpath)
+    print(result.sum())
+    results += result.sum()
+    sparse = csr_matrix(result)
+    print(sparse)
 time1 = time.time()
-sparse = csr_matrix(result)
+print(f"Results: {results}")
 print(f"Done! Time: {time1- time0}")
-print(result.sum())
