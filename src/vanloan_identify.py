@@ -30,7 +30,9 @@ def generate_paths(
             new_by_l = (
                 by_l
                 if by_l is not None
-                else (l if omega_nonrev_counts[l] == 1 else None)
+                else (
+                    l if omega_nonrev_counts[l] == 1 and start_l + 1 != end_l else None
+                )
             )
             generate_paths(
                 new_state,
@@ -49,8 +51,12 @@ def generate_paths(
             new_by_r = (
                 by_r
                 if by_r is not None
-                else (r if omega_nonrev_counts[r] == 1 else None)
+                else (
+                    r if omega_nonrev_counts[r] == 1 and start_r + 1 != end_r else None
+                )
             )
+            if new_by_r == 3 or by_r == 3:
+                print("hit")
             generate_paths(
                 new_state,
                 omega_fin,
@@ -70,12 +76,20 @@ def generate_paths(
                     new_by_l = (
                         by_l
                         if by_l is not None
-                        else (l if omega_nonrev_counts[l] == 1 else None)
+                        else (
+                            l
+                            if omega_nonrev_counts[l] == 1 and start_l + 1 != end_l
+                            else None
+                        )
                     )
                     new_by_r = (
                         by_r
                         if by_r is not None
-                        else (r if omega_nonrev_counts[r] == 1 else None)
+                        else (
+                            r
+                            if omega_nonrev_counts[r] == 1 and start_r + 1 != end_r
+                            else None
+                        )
                     )
                     generate_paths(
                         new_state,
@@ -107,9 +121,9 @@ def get_all_paths(
 omega_nonrev_counts = {0: 0, 3: 1, 5: 1, 6: 1, 7: 2}
 inverted_omega_nonrev_counts = {0: [0], 1: [3, 5, 6], 2: [7]}
 omega_init = (0, 0)
-omega_fin = (7, 7)
+omega_fin = (7, 3)
 
 all_paths = get_all_paths(
     omega_init, omega_fin, omega_nonrev_counts, inverted_omega_nonrev_counts
 )
-print(all_paths)
+print(all_paths.keys())
