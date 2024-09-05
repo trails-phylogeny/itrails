@@ -55,8 +55,6 @@ def generate_paths(
                     r if omega_nonrev_counts[r] == 1 and start_r + 1 != end_r else None
                 )
             )
-            if new_by_r == 3 or by_r == 3:
-                print("hit")
             generate_paths(
                 new_state,
                 omega_fin,
