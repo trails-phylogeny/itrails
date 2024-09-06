@@ -357,12 +357,12 @@ def number_array_1(
         for j in set(l_nucl):
             if len(l_nucl_counts[j]) > 1:
                 for k in l_nucl_counts[j]:
-                    l_omega += mss[k - 1]
+                    l_omega += mss[k]
 
         for j in set(r_nucl):
             if len(r_nucl_counts[j]) > 1:
                 for k in r_nucl_counts[j]:
-                    r_omega += mss[k - 1]
+                    r_omega += mss[k]
 
         state_dict[state_tuple] = i
 
@@ -371,7 +371,6 @@ def number_array_1(
             omega_dict[(l_omega, r_omega)][i] = True
         else:
             omega_dict[(l_omega, r_omega)][i] = True
-    # omega_dict[(-1, -1)] = np.ones(total_states, dtype=boolean)
     return omega_dict, state_dict
 
 
@@ -469,12 +468,12 @@ def number_array_2(
         for j in set(l_nucl):
             if len(l_nucl_counts[j]) > 1:
                 for k in l_nucl_counts[j]:
-                    l_omega += mss[k - 1]
+                    l_omega += mss[k]
 
         for j in set(r_nucl):
             if len(r_nucl_counts[j]) > 1:
                 for k in r_nucl_counts[j]:
-                    r_omega += mss[k - 1]
+                    r_omega += mss[k]
 
         state_dict[state_tuple] = i
 
@@ -581,12 +580,12 @@ def number_array_3(
         for j in set(l_nucl):
             if len(l_nucl_counts[j]) > 1:
                 for k in l_nucl_counts[j]:
-                    l_omega += mss[k - 1]
+                    l_omega += mss[k]
 
         for j in set(r_nucl):
             if len(r_nucl_counts[j]) > 1:
                 for k in r_nucl_counts[j]:
-                    r_omega += mss[k - 1]
+                    r_omega += mss[k]
 
         state_dict[state_tuple] = i
 
