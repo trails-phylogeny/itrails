@@ -1,7 +1,6 @@
 from __future__ import division, print_function
 from math import ceil, log
 import numpy as np
-import numba
 from numba import njit
 
 
