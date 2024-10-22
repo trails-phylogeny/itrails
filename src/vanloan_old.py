@@ -1,7 +1,9 @@
 import numpy as np
 from expm import expm
+from numba import jit
 
 
+@jit(nopython=True)
 def vanloan_general(trans_mat, path, tim, omega_dict):
     n = trans_mat.shape[0]
     steps = len(path)
@@ -13,9 +15,9 @@ def vanloan_general(trans_mat, path, tim, omega_dict):
         sub_om_init = path[idx - 1]
         sub_om_fin = path[idx]
         A_mat = (
-            omega_dict[sub_om_init][:, np.newaxis]
-            * trans_mat
-            * omega_dict[sub_om_fin][np.newaxis, :]
+            np.diag(omega_dict[sub_om_init].astype(np.float64))
+            @ trans_mat
+            @ np.diag(omega_dict[sub_om_fin].astype(np.float64))
         )
         C_mat[n * (idx - 1) : n * idx, n * idx : n * (idx + 1)] = A_mat
 

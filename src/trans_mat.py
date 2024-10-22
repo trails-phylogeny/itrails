@@ -81,7 +81,7 @@ def set_partitions(species):
     return state_array
 
 
-# @jit(nopython=True)
+@jit(nopython=True)
 def translate_to_minimum(array):
     """
     Function that reformats the set partitions so that each of

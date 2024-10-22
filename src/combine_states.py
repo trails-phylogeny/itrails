@@ -98,7 +98,7 @@ def combine_states_general(
         pi_vector_combined = combine_states(
             state_dict_1, state_dict_2, state_dict_sum, prob1, prob2
         )
-        pi_dict[(((-1, -1)), combined_by_omega)] = pi_vector_combined
+        pi_dict[(((-1, -1),), combined_by_omega)] = pi_vector_combined
         return pi_dict
 
     else:

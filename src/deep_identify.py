@@ -1,6 +1,6 @@
-def generate_paths_vl(
+def generate_paths_deep(
     current,
-    omega_fin,
+    absorbing_state,
     omega_nonrev_counts,
     inverted_omega_nonrev_counts,
     path,
@@ -8,17 +8,23 @@ def generate_paths_vl(
     by_l=None,
     by_r=None,
 ):
-    if current == omega_fin:
+    # Adjust the termination condition:
+    diff_l = omega_nonrev_counts[absorbing_state[0]] - omega_nonrev_counts[current[0]]
+    diff_r = omega_nonrev_counts[absorbing_state[1]] - omega_nonrev_counts[current[1]]
+
+    # If the sum of differences is 2, this is a valid termination point.
+    if diff_l <= 1 and diff_r <= 1:
         key = (by_l, by_r)
         if key not in all_paths_dict:
             all_paths_dict[key] = []
         all_paths_dict[key].append(path[:])
         return
 
+    # Proceed with the original path generation logic:
     start_l = omega_nonrev_counts[current[0]]
     start_r = omega_nonrev_counts[current[1]]
-    end_l = omega_nonrev_counts[omega_fin[0]]
-    end_r = omega_nonrev_counts[omega_fin[1]]
+    end_l = omega_nonrev_counts[absorbing_state[0]]
+    end_r = omega_nonrev_counts[absorbing_state[1]]
 
     if start_l < end_l:
         for l in inverted_omega_nonrev_counts[start_l + 1]:
@@ -30,9 +36,9 @@ def generate_paths_vl(
                     l if omega_nonrev_counts[l] == 1 and start_l + 1 != end_l else None
                 )
             )
-            generate_paths_vl(
+            generate_paths_deep(
                 new_state,
-                omega_fin,
+                absorbing_state,
                 omega_nonrev_counts,
                 inverted_omega_nonrev_counts,
                 path + [new_state],
@@ -51,9 +57,9 @@ def generate_paths_vl(
                     r if omega_nonrev_counts[r] == 1 and start_r + 1 != end_r else None
                 )
             )
-            generate_paths_vl(
+            generate_paths_deep(
                 new_state,
-                omega_fin,
+                absorbing_state,
                 omega_nonrev_counts,
                 inverted_omega_nonrev_counts,
                 path + [new_state],
@@ -85,9 +91,9 @@ def generate_paths_vl(
                             else None
                         )
                     )
-                    generate_paths_vl(
+                    generate_paths_deep(
                         new_state,
-                        omega_fin,
+                        absorbing_state,
                         omega_nonrev_counts,
                         inverted_omega_nonrev_counts,
                         path + [new_state],
@@ -97,13 +103,14 @@ def generate_paths_vl(
                     )
 
 
-def get_all_paths_vl(
-    omega_init, omega_fin, omega_nonrev_counts, inverted_omega_nonrev_counts
+# Wrapper function to get all paths
+def get_all_paths_deep(
+    omega_init, absorbing_state, omega_nonrev_counts, inverted_omega_nonrev_counts
 ):
     all_paths_dict = {}
-    generate_paths_vl(
+    generate_paths_deep(
         omega_init,
-        omega_fin,
+        absorbing_state,
         omega_nonrev_counts,
         inverted_omega_nonrev_counts,
         [omega_init],

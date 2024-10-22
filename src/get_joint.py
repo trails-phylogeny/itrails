@@ -1,11 +1,17 @@
 import numpy as np
 from trans_mat import get_trans_mat, wrapper_state_general
 
+
 from expm import expm
+
+# from scipy.linalg import expm
 from cut_times import cutpoints_AB, cutpoints_ABC, get_times
 from combine_states import combine_states_general
 import time
 from run_mc import run_mc
+
+from scipy.sparse import csr_matrix
+import pickle
 
 
 def get_joint_prob_mat(
@@ -67,19 +73,17 @@ def get_joint_prob_mat(
     number_dict_C = state_dict_1
     number_dict_AB = state_dict_2
     number_dict_ABC = state_dict_3
-
     # Combine A and B CTMCs
+
     pi_AB = combine_states_general(
         number_dict_A, number_dict_B, number_dict_AB, final_A, final_B
     )
-
-    for key, value in pi_AB.items():
-        print(key, np.sum(value))
     # Get cutopints and times based on cutopoints.
     if isinstance(cut_AB, str):
         cut_AB = cutpoints_AB(n_int_AB, t_AB, coal_AB)
     times_AB = get_times(cut_AB, list(range(len(cut_AB))))
     inverted_omega_nonrev_counts = {0: [0], 1: [3]}
+
     final_AB = run_mc(
         trans_mat_ab,
         times_AB,
@@ -87,8 +91,11 @@ def get_joint_prob_mat(
         pi_AB,
         omega_nonrev_counts_2,
         inverted_omega_nonrev_counts,
+        absorbing_state=(3, 3),
+        species=2,
         initial=1,
     )
+
     pi_ABC = combine_states_general(
         number_dict_AB, number_dict_C, number_dict_ABC, final_AB, final_C
     )
@@ -97,6 +104,7 @@ def get_joint_prob_mat(
         cut_ABC = cutpoints_ABC(n_int_ABC, coal_ABC)
     times_ABC = get_times(cut_ABC, list(range(len(cut_ABC))))
     inverted_omega_nonrev_counts = {0: [0], 1: [3, 5, 6], 2: [7]}
+
     final_ABC = run_mc(
         trans_mat_abc,
         times_ABC,
@@ -104,13 +112,10 @@ def get_joint_prob_mat(
         pi_ABC,
         omega_nonrev_counts_3,
         inverted_omega_nonrev_counts,
+        absorbing_state=(7, 7),
+        species=3,
         initial=0,
     )
-    prob = 0
-    for key, value in final_ABC.items():
-        print(key, np.sum(value))
-        prob += np.sum(value)
-    print(prob)
 
     return final_ABC
 
@@ -141,4 +146,42 @@ final_ABC = get_joint_prob_mat(
 )
 time1 = time.time()
 
+
+print("Precomputing done!")
 print(f"Time precomputing: {time1 - time0}")
+
+
+time0 = time.time()
+final_ABC = get_joint_prob_mat(
+    t_A=10,
+    t_B=10,
+    t_AB=20,
+    t_C=20,
+    rho_A=0.3,
+    rho_B=0.4,
+    rho_AB=0.6,
+    rho_C=0.3,
+    rho_ABC=0.4,
+    coal_A=0.6,
+    coal_B=0.4,
+    coal_AB=0.2,
+    coal_C=0.5,
+    coal_ABC=0.4,
+    n_int_AB=3,
+    # p_init_A=np.array([1, 0], dtype=np.float64),
+    # p_init_B=np.array([1, 0], dtype=np.float64),
+    # p_init_C=np.array([0, 1], dtype=np.float64),
+    cut_AB="standard",
+    cut_ABC="standard",
+    n_int_ABC=3,
+)
+time1 = time.time()
+
+prob = 0
+for (path, subpath), value in final_ABC.items():
+    # print(path, subpath, np.sum(value))
+    prob += np.sum(value)
+
+print(prob)
+
+print(f"Time after precomputing: {time1 - time0}")
