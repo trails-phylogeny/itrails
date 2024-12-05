@@ -1,7 +1,4 @@
 import numpy as np
-import numba as nb
-from numba.typed import Dict
-from numba.types import Tuple, int64, float64, boolean
 
 
 def combine_states(
@@ -58,7 +55,7 @@ def combine_states(
                 index += 1
 
             init_comb_dict[tuple(comb_state)] = (
-                final_probs_1[0, index_1] * final_probs_2[0, index_2]
+                final_probs_1[index_1] * final_probs_2[index_2]
             )
     for state in init_comb_dict.keys():
         index_AB = state_dict_sum[state]
@@ -66,52 +63,42 @@ def combine_states(
     return init_comb_all
 
 
-@nb.jit(nopython=True)
 def combine_by_omega(by_omega_1, by_omega_2):
     return (
-        by_omega_1[0] if by_omega_1[0] != -1 else by_omega_2[0],
-        by_omega_1[1] if by_omega_1[1] != -1 else by_omega_2[1],
+        by_omega_1[0] if by_omega_1[0] is not None else by_omega_2[0],
+        by_omega_1[1] if by_omega_1[1] is not None else by_omega_2[1],
     )
 
 
 def combine_states_general(
-    state_dict_1,
-    state_dict_2,
-    state_dict_sum,
-    final_probs_1,
-    final_probs_2,
-    n_int_AB,
-    n_int_ABC,
+    state_dict_1, state_dict_2, state_dict_sum, final_probs_1, final_probs_2
 ):
-    pi_dict = Dict.empty(
-        key_type=nb.types.UniTuple(nb.types.UniTuple(int64, 3), 2),
-        value_type=float64[:, :],
-    )
-
-    start_placeholder = ((-1, -1, -1), (-1, -1, -1))
+    pi_dict = {}
 
     if len(final_probs_1.keys()) > 1 and len(final_probs_2.keys()) > 1:
         raise NotImplementedError
 
     elif len(final_probs_1.keys()) > 1 and len(final_probs_2.keys()) == 1:
-        prob2 = final_probs_2[start_placeholder]
-        for path, prob1 in final_probs_1.items():
+        by_omega_2 = (None, None)
+        prob2 = final_probs_2[(0), by_omega_2]
+        for (path1, by_omega_1), prob1 in final_probs_1.items():
+            combined_by_omega = combine_by_omega(by_omega_1, by_omega_2)
             pi_vector_combined = combine_states(
                 state_dict_1, state_dict_2, state_dict_sum, prob1, prob2
             )
-
-            pi_dict[path] = pi_vector_combined.reshape(1, -1)
-
+            pi_dict[(path1, combined_by_omega)] = pi_vector_combined
         return pi_dict
 
     elif len(final_probs_1.keys()) == 1 and len(final_probs_2.keys()) == 1:
-
-        prob1 = final_probs_1[start_placeholder]
-        prob2 = final_probs_2[start_placeholder]
+        by_omega_1 = (None, None)
+        by_omega_2 = (None, None)
+        prob1 = final_probs_1[(0), by_omega_1]
+        prob2 = final_probs_2[(0), by_omega_2]
+        combined_by_omega = combine_by_omega(by_omega_1, by_omega_2)
         pi_vector_combined = combine_states(
             state_dict_1, state_dict_2, state_dict_sum, prob1, prob2
         )
-        pi_dict[start_placeholder] = pi_vector_combined.reshape(1, -1)
+        pi_dict[(((-1, -1),), combined_by_omega)] = pi_vector_combined
         return pi_dict
 
     else:

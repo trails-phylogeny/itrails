@@ -1,23 +1,17 @@
 import numpy as np
 from trans_mat import get_trans_mat, wrapper_state_general
-from numba import typeof
-import numba as nb
-from numba.typed import Dict, List
-from numba.types import Tuple, int64, float64, boolean
-from expm import expm
-from numba import njit, jit
 
-from deep_identify import get_all_paths_deep
+
+from expm import expm
 
 # from scipy.linalg import expm
 from cut_times import cutpoints_AB, cutpoints_ABC, get_times
-from combine_states import combine_states_general
+from combine_states_old import combine_states_general
 import time
-from run_mc import run_mc_AB, run_mc_ABC
+from run_mc_old import run_mc
 
 from scipy.sparse import csr_matrix
 import pickle
-import cProfile
 
 
 def get_joint_prob_mat(
@@ -66,26 +60,12 @@ def get_joint_prob_mat(
     pi_A = pi_B = pi_C = pi_1seq
 
     # Get final probabilities of 1seq CTMC
-
-    start_placeholder = ((-1, -1, -1), (-1, -1, -1))
-
-    final_A = Dict.empty(
-        key_type=nb.types.UniTuple(nb.types.UniTuple(int64, 3), 2),
-        value_type=float64[:, :],
-    )
-    final_B = Dict.empty(
-        key_type=nb.types.UniTuple(nb.types.UniTuple(int64, 3), 2),
-        value_type=float64[:, :],
-    )
-    final_C = Dict.empty(
-        key_type=nb.types.UniTuple(nb.types.UniTuple(int64, 3), 2),
-        value_type=float64[:, :],
-    )
-    final_A[start_placeholder] = (pi_A @ expm(trans_mat_a * t_A)).reshape(1, -1)
+    final_A = {}
+    final_A[(0), (None, None)] = pi_A @ expm(trans_mat_a * t_A)
     final_B = {}
-    final_B[start_placeholder] = (pi_B @ expm(trans_mat_b * t_B)).reshape(1, -1)
+    final_B[(0), (None, None)] = pi_B @ expm(trans_mat_b * t_B)
     final_C = {}
-    final_C[start_placeholder] = (pi_C @ expm(trans_mat_c * t_C)).reshape(1, -1)
+    final_C[(0), (None, None)] = pi_C @ expm(trans_mat_c * t_C)
 
     # Dicts to know position of hidden states in the prob matrix.
     number_dict_A = state_dict_1
@@ -96,66 +76,45 @@ def get_joint_prob_mat(
     # Combine A and B CTMCs
 
     pi_AB = combine_states_general(
-        number_dict_A,
-        number_dict_B,
-        number_dict_AB,
-        final_A,
-        final_B,
-        n_int_AB,
-        n_int_ABC,
+        number_dict_A, number_dict_B, number_dict_AB, final_A, final_B
     )
-
     # Get cutopints and times based on cutopoints.
     if isinstance(cut_AB, str):
         cut_AB = cutpoints_AB(n_int_AB, t_AB, coal_AB)
     times_AB = get_times(cut_AB, list(range(len(cut_AB))))
-    inverted_omega_nonrev_counts = Dict.empty(
-        key_type=nb.types.int64,  # Key type: integer
-        value_type=nb.types.ListType(nb.types.int64),  # Value type: list of integers
-    )
+    inverted_omega_nonrev_counts = {0: [0], 1: [3]}
 
-    # Populate the dictionary
-    inverted_omega_nonrev_counts[0] = List([0])
-    inverted_omega_nonrev_counts[1] = List([3])
-
-    final_AB = run_mc_AB(
+    final_AB = run_mc(
         trans_mat_ab,
         times_AB,
         omega_dict_2,
         pi_AB,
-        n_int_AB,
+        omega_nonrev_counts_2,
+        inverted_omega_nonrev_counts,
+        absorbing_state=(3, 3),
+        species=2,
+        initial=1,
     )
 
     pi_ABC = combine_states_general(
-        number_dict_AB,
-        number_dict_C,
-        number_dict_ABC,
-        final_AB,
-        final_C,
-        n_int_AB,
-        n_int_ABC,
+        number_dict_AB, number_dict_C, number_dict_ABC, final_AB, final_C
     )
 
     if isinstance(cut_ABC, str):
         cut_ABC = cutpoints_ABC(n_int_ABC, coal_ABC)
     times_ABC = get_times(cut_ABC, list(range(len(cut_ABC))))
-    inverted_omega_nonrev_counts = Dict.empty(
-        key_type=nb.types.int64, value_type=nb.types.ListType(nb.types.int64)
-    )
+    inverted_omega_nonrev_counts = {0: [0], 1: [3, 5, 6], 2: [7]}
 
-    # Fill the dictionary with values
-    inverted_omega_nonrev_counts[0] = List([0])
-    inverted_omega_nonrev_counts[1] = List([3, 5, 6])
-    inverted_omega_nonrev_counts[2] = List([7])
-
-    final_ABC = run_mc_ABC(
+    final_ABC = run_mc(
         trans_mat_abc,
         times_ABC,
         omega_dict_3,
         pi_ABC,
         omega_nonrev_counts_3,
         inverted_omega_nonrev_counts,
-        n_int_ABC,
+        absorbing_state=(7, 7),
+        species=3,
+        initial=0,
     )
 
     return final_ABC
@@ -187,17 +146,13 @@ final_ABC = get_joint_prob_mat(
 )
 time1 = time.time()
 
-prob = 0
-for path, value in final_ABC.items():
-    print(path, np.sum(value))
-    prob += np.sum(value)
 
-print(prob)
 print("Precomputing done!")
 print(f"Time precomputing: {time1 - time0}")
 
+
 time0 = time.time()
-get_joint_prob_mat(
+final_ABC = get_joint_prob_mat(
     t_A=10,
     t_B=10,
     t_AB=20,
@@ -221,10 +176,12 @@ get_joint_prob_mat(
     n_int_ABC=3,
 )
 time1 = time.time()
+
 prob = 0
-for path, value in final_ABC.items():
-    print(path, np.sum(value))
+for (path, subpath), value in final_ABC.items():
+    # print(path, subpath, np.sum(value))
     prob += np.sum(value)
 
 print(prob)
+
 print(f"Time after precomputing: {time1 - time0}")

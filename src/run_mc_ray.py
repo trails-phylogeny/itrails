@@ -349,3 +349,211 @@ def run_mc(
                         ] = result
 
     return final_prob_vector
+
+
+def run_mc_ABC(
+    trans_mat,
+    times,
+    omega_dict,
+    prob_dict,
+    omega_nonrev_counts,
+    inverted_omega_nonrev_counts,
+    n_int_ABC,
+):
+    step = 0
+
+    for _ in range(step, n_int_ABC - 1):
+        exponential_time = expm(trans_mat * times[step])
+        og_keys = list(prob_dict.keys())
+        for path in og_keys:
+            prob_mat = prob_dict[path]
+            l_path, r_path = path[0], path[1]
+            l_results = np.full((6, 3), -1, dtype=np.int64)
+            r_results = np.full((6, 3), -1, dtype=np.int64)
+            l_results[0] = l_path
+            r_results[0] = r_path
+
+            l_results[1] = (l_path[0], step, step) if l_path[0] == -1 else l_path
+            r_results[1] = (r_path[0], step, step) if r_path[0] == -1 else r_path
+
+            l_results[2] = (1, step, l_path[2]) if l_path[0] == -1 else l_path
+            r_results[2] = (1, step, r_path[2]) if r_path[0] == -1 else r_path
+
+            l_results[3] = (2, step, l_path[2]) if l_path[0] == -1 else l_path
+            r_results[3] = (2, step, r_path[2]) if r_path[0] == -1 else r_path
+
+            l_results[4] = (3, step, l_path[2]) if l_path[0] == -1 else l_path
+            r_results[4] = (3, step, r_path[2]) if r_path[0] == -1 else r_path
+
+            l_results[5] = (
+                (l_path[0], l_path[1], step)
+                if l_path[0] != -1 and l_path[2] == -1
+                else l_path
+            )
+            r_results[5] = (
+                (r_path[0], r_path[1], step)
+                if r_path[0] != -1 and r_path[2] == -1
+                else r_path
+            )
+
+            for l_row in l_results:
+                l_tuple = (int(l_row[0]), int(l_row[1]), int(l_row[2]))
+                for r_row in r_results:
+
+                    r_tuple = (int(r_row[0]), int(r_row[1]), int(r_row[2]))
+                    if (l_tuple, r_tuple) in og_keys and not (
+                        np.array_equal(l_row, l_path) and np.array_equal(r_row, r_path)
+                    ):
+                        continue
+                    else:
+                        new_key = (
+                            l_tuple,
+                            r_tuple,
+                        )
+                        omega_start = translate_to_omega(path)
+                        omega_end = translate_to_omega(new_key)
+                        omega_start_mask = omega_dict[omega_start]
+                        omega_end_mask = omega_dict[omega_end]
+
+                        if (
+                            l_tuple[0] != 0
+                            and l_tuple[1] == l_tuple[2]
+                            and l_tuple[1] != -1
+                        ) or (
+                            r_tuple[0] != 0
+                            and r_tuple[1] == r_tuple[2]
+                            and r_tuple[1] != -1
+                        ):
+                            all_paths = get_all_paths_vl(
+                                omega_start,
+                                omega_end,
+                                omega_nonrev_counts,
+                                inverted_omega_nonrev_counts,
+                            )
+                            for by_omega in all_paths.keys():
+                                new_omega_l = (
+                                    1
+                                    if by_omega[0] == 3
+                                    else (
+                                        2
+                                        if by_omega[0] == 5
+                                        else 3 if by_omega[0] == 6 else l_tuple[0]
+                                    )
+                                )
+                                new_omega_r = (
+                                    1
+                                    if by_omega[1] == 3
+                                    else (
+                                        2
+                                        if by_omega[1] == 5
+                                        else 3 if by_omega[1] == 6 else r_tuple[0]
+                                    )
+                                )
+                                new_key = (
+                                    (new_omega_l, int(l_row[1]), int(l_row[2])),
+                                    (new_omega_r, int(r_row[1]), int(r_row[2])),
+                                )
+                                vl_sum = np.zeros_like(trans_mat)
+                                for vl_path in all_paths[by_omega]:
+                                    vl_res = vanloan_general(
+                                        trans_mat, vl_path, times[step], omega_dict
+                                    )
+                                    vl_sum += vl_res
+                                vl_sum_slice = (
+                                    omega_start_mask[:, np.newaxis]
+                                    * vl_sum
+                                    * omega_end_mask[np.newaxis, :]
+                                )
+                                prob_dict[new_key] = prob_mat @ vl_sum_slice
+                        else:
+                            sliced_mat = (
+                                omega_start_mask[:, np.newaxis]
+                                * exponential_time
+                                * omega_end_mask[np.newaxis, :]
+                            )
+                            prob_dict[new_key] = prob_mat @ sliced_mat
+        step += 1
+    og_keys = list(prob_dict.keys())
+    noabs_mask = omega_dict[(7, 7)] == False
+    trans_mat_noabs = trans_mat[noabs_mask][:, noabs_mask]
+    omega_dict_noabs = remove_absorbing_indices(
+        omega_dict=omega_dict, absorbing_key=(7, 7), species=3
+    )
+    for path in og_keys:
+        l_path, r_path = path[0], path[1]
+        if (l_path[2] == -1 and l_path[2] == l_path[1]) or (
+            r_path[2] == -1 and r_path[2] == r_path[1]
+        ):
+            prob_mat_sliced = prob_dict[path][:, noabs_mask]
+            omega_end = translate_to_omega(path)
+            all_paths = get_all_paths_deep(
+                omega_end,
+                (7, 7),
+                omega_nonrev_counts,
+                inverted_omega_nonrev_counts,
+            )
+            for by_omega in all_paths.keys():
+
+                new_omega_l = (
+                    1
+                    if by_omega[0] == 3
+                    else (
+                        2 if by_omega[0] == 5 else 3 if by_omega[0] == 6 else l_tuple[0]
+                    )
+                )
+                new_omega_r = (
+                    1
+                    if by_omega[1] == 3
+                    else (
+                        2 if by_omega[1] == 5 else 3 if by_omega[1] == 6 else r_tuple[0]
+                    )
+                )
+                l_tuple = (
+                    (l_path[0], l_path[1], l_path[2])
+                    if not (l_path[2] == -1 and l_path[2] == l_path[1])
+                    else (new_omega_l, step, step)
+                )
+                r_tuple = (
+                    (r_path[0], r_path[1], r_path[2])
+                    if not (r_path[2] == -1 and r_path[2] == r_path[1])
+                    else (new_omega_r, step, step)
+                )
+                new_key = (l_tuple, r_tuple)
+
+                deep_ti_sum = np.zeros_like(trans_mat_noabs)
+                for deep_ti_path in all_paths[by_omega]:
+                    deep_ti = deep_ti = deepest_ti(
+                        trans_mat_noabs, omega_dict_noabs, deep_ti_path
+                    )
+
+                    deep_ti_sum += deep_ti
+
+                prob_dict[new_key] = prob_mat_sliced @ deep_ti_sum
+            del prob_dict[path]
+
+    og_keys = list(prob_dict.keys())
+    for path in og_keys:
+        l_path, r_path = path[0], path[1]
+        if l_path[2] == -1 and r_path[2] == -1:
+            prob_mat = prob_dict[path]
+            l_tuple = (l_path[0], l_path[1], step)
+            r_tuple = (r_path[0], r_path[1], step)
+            new_key = (l_tuple, r_tuple)
+            prob_dict[new_key] = prob_mat
+            del prob_dict[path]
+        elif l_path[2] == -1:
+            prob_mat = prob_dict[path]
+            l_tuple = (l_path[0], l_path[1], step)
+            r_tuple = (r_path[0], r_path[1], r_path[2])
+            new_key = (l_tuple, r_tuple)
+            prob_dict[new_key] = prob_mat
+            del prob_dict[path]
+        elif r_path[2] == -1:
+            prob_mat = prob_dict[path]
+            l_tuple = (l_path[0], l_path[1], l_path[2])
+            r_tuple = (r_path[0], r_path[1], step)
+            new_key = (l_tuple, r_tuple)
+            prob_dict[new_key] = prob_mat
+            del prob_dict[path]
+
+    return prob_dict
