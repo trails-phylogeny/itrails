@@ -10,12 +10,8 @@ from remove_absorbing import remove_absorbing_indices
 from deepest_ti import deepest_ti
 import numba as nb
 from numba.typed import Dict
-import pickle
 from numba.types import Tuple, int64, float64, boolean, UniTuple
 from numba import objmode, typeof
-import ray
-
-ray.init()
 
 
 @nb.jit(nopython=True)
@@ -76,72 +72,42 @@ def translate_to_omega(key):
     return (l_omega, r_omega)
 
 
-@ray.remote
-def compute_matrix_end(prob_mat, exponential_time, omega_end_mask):
-    mat_mult_result = prob_mat @ exponential_time
-    result = mat_mult_result * omega_end_mask
-    return result
-
-
-@ray.remote
-def compute_matrix_start_end(
-    prob_mat, exponential_time, omega_start_mask, omega_end_mask
-):
-    sliced_mat = (omega_start_mask) @ (exponential_time) @ (omega_end_mask)
-
-    result = (prob_mat) @ (sliced_mat)
-    return result
-
-
+@nb.jit(nopython=True, parallel=True)
 def compute_matrices_end_15(
     prob_mats, exponential_time, omega_end_masks, num_combinations
 ):
-    results = []
-    # Launch Ray tasks
-    for i in range(num_combinations):
-        result = compute_matrix_end.remote(
-            prob_mats[i], exponential_time, omega_end_masks[i]
-        )
-        results.append(result)
+    prob_mats = np.ascontiguousarray(prob_mats)
+    # exponential_time = np.ascontiguousarray(exponential_time)
+    omega_end_masks = np.ascontiguousarray(omega_end_masks)
 
-    # Gather results
-    results = ray.get(results)
-    return np.array(results)
+    results = np.zeros((num_combinations, 1, 15), dtype=np.float64)
+    for i in nb.prange(num_combinations):
+        mat_mult_result = (prob_mats[i]) @ (exponential_time)
+        results[i] = (mat_mult_result) * (omega_end_masks[i])
+    return results
 
 
+@nb.jit(nopython=True, parallel=True)
 def compute_matrices_start_end_15(
     prob_mats, exponential_time, omega_start_masks, omega_end_masks, num_combinations
 ):
-    results = []
+    results = np.zeros((num_combinations, 1, 15), dtype=np.float64)
+    prob_mats = np.ascontiguousarray(prob_mats)
+    # exponential_time = (exponential_time)
+    omega_start_masks = np.ascontiguousarray(omega_start_masks)
+    omega_end_masks = np.ascontiguousarray(omega_end_masks)
 
-    for i in range(num_combinations):
-        result = compute_matrix_start_end.remote(
-            prob_mats[i], exponential_time, omega_start_masks[i], omega_end_masks[i]
-        )
-        results.append(result)
+    for i in nb.prange(num_combinations):
+        sliced_mat = (
+            (omega_start_masks[i])  # Shape: (15, 1)
+            @ (exponential_time)  # Shape: (15, 15)
+            @ (omega_end_masks[i])  # Shape: (1, 15)
+        )  # Resulting shape: (15, 15)
 
-    # Gather results
-    results = ray.get(results)
-    return np.array(results)
-
-
-def compute_matrices_start_end_203(
-    prob_mats, exponential_times, omega_start_masks, omega_end_masks, num_combinations
-):
-    results = []
-
-    for i in range(num_combinations):
-        result = compute_matrix_start_end.remote(
-            prob_mats[i], exponential_times[i], omega_start_masks[i], omega_end_masks[i]
-        )
-        results.append(result)
-
-    # Gather results
-    results = ray.get(results)
-    return np.array(results)
+        results[i] = (prob_mats[i]) @ (sliced_mat)
+    return results
 
 
-""" 
 @nb.jit(nopython=True, parallel=True)
 def compute_matrices_start_end_203(
     prob_mats, exponential_time, omega_start_masks, omega_end_masks, num_combinations
@@ -162,9 +128,8 @@ def compute_matrices_start_end_203(
 
         results[i] = (prob_mats[i]) @ (sliced_mat)
     return results
- """
 
-""" 
+
 @nb.jit(nopython=True, parallel=True)
 def vanloan_parallel(
     vl_idx,
@@ -237,103 +202,9 @@ def vanloan_parallel(
             idx += 1
 
     return flattened_keys, flattened_results, total_valid
- """
 
 
-@ray.remote
-def vanloan_worker_inner(
-    idx_i,
-    idx_j,
-    trans_mat,
-    omega_dict_serialized,  # Serialized dictionary
-    key,
-    time,
-    paths_array_j,
-    omega_start_mask,
-    omega_end_mask,
-    prob_mat,
-):
-    """Ray worker function for a single (i, j) pair."""
-    # Deserialize omega_dict
-    omega_dict = pickle.loads(omega_dict_serialized)
-
-    key_last = key[-1]
-    results = np.zeros((key_last, 203, 203))
-
-    # Compute intermediate results
-    for k in range(key_last):
-        path = paths_array_j[k][1 : paths_array_j[k][0][0] + 1]
-        results[k] = vanloan_general(trans_mat, path, time, omega_dict)
-
-    # Summing results and computing sliced matrix
-    sliced_mat = omega_start_mask @ results.sum(axis=0) @ omega_end_mask
-    final_result = prob_mat @ sliced_mat
-    final_key = key[:-1]
-
-    return idx_i, idx_j, final_result, final_key
-
-
-def vanloan_parallel_inner(
-    vl_idx,
-    time,
-    trans_mat,
-    omega_dict,
-    vl_keys_acc_array,
-    vl_paths_acc_array,
-    vl_omega_masks_start,
-    vl_omega_masks_end,
-    vl_prob_mats,
-):
-    omega_dict_python = dict(omega_dict)
-
-    omega_dict_serialized = pickle.dumps(omega_dict_python)
-    """Parallelize inner valid_length loop using Ray."""
-    # Initialize Ray
-    if not ray.is_initialized():
-        ray.init()
-
-    # Submit tasks for each valid (i, j)
-    tasks = []
-    for i in range(vl_idx):
-        key_array = vl_keys_acc_array[i]
-        paths_array = vl_paths_acc_array[i]
-        omega_start_mask = vl_omega_masks_start[i]
-        omega_end_mask = vl_omega_masks_end[i]
-        prob_mat = vl_prob_mats[i]
-
-        for j, key in enumerate(key_array):
-            if key[-1] == 0:  # Stop at invalid keys
-                break
-            task = vanloan_worker_inner.remote(
-                i,
-                j,
-                trans_mat,
-                omega_dict_serialized,
-                key,
-                time,
-                paths_array[j],
-                omega_start_mask,
-                omega_end_mask,
-                prob_mat,
-            )
-            tasks.append(task)
-
-    # Gather results
-    results = ray.get(tasks)
-
-    # Combine results
-    total_valid = len(results)
-    flattened_results = np.zeros((total_valid, 1, 203))
-    flattened_keys = np.zeros((total_valid, 6), dtype=np.int64)
-
-    for idx, (i, j, final_result, final_key) in enumerate(results):
-        flattened_results[idx] = final_result
-        flattened_keys[idx] = final_key
-
-    return flattened_keys, flattened_results, total_valid
-
-
-# @nb.jit(nopython=True)
+@nb.jit(nopython=True)
 def run_mc_AB(
     trans_mat,
     times,
@@ -489,7 +360,7 @@ def run_mc_AB(
     return prob_dict
 
 
-# @nb.jit(nopython=True)
+@nb.jit(nopython=True)
 def run_mc_ABC(
     trans_mat,
     times,
@@ -632,7 +503,7 @@ def run_mc_ABC(
                             exponential_times[result_idx] = exponential_time
                             result_idx += 1
 
-            flattened_keys, flattened_results, total_valid = vanloan_parallel_inner(
+            flattened_keys, flattened_results, total_valid = vanloan_parallel(
                 vl_idx,
                 times[step],
                 trans_mat,
