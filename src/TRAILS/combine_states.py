@@ -79,7 +79,7 @@ def combine_states(
         init_comb_all[index_AB] = init_comb_dict[state]
     return init_comb_all
 
-def combine_states_general(
+def combine_states_wrapper(
     state_dict_1,
     state_dict_2,
     state_dict_sum,

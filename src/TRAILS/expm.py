@@ -1,10 +1,11 @@
-from __future__ import division, print_function
-from math import ceil, log
+
 import numpy as np
-from numba import njit
+import numba as nb
+import math
+from __future__ import division, print_function
 
 
-@njit(parallel=False, fastmath=True)
+@nb.jit(nopython=True, parallel=False, fastmath=True)
 def expm(A):
     """
     Calculates matrix exponential of a square matrix A.
@@ -135,7 +136,7 @@ def expm(A):
             1,
         ]
 
-        s = max(0, int(ceil(log(norm / theta13) / log(2))))
+        s = max(0, int(math.ceil(math.log(norm / theta13) / math.log(2))))
         if s > 0:
             A /= 2**s
 
