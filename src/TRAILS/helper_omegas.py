@@ -20,6 +20,13 @@ def combine_by_omega(by_omega_1, by_omega_2):
 
 @nb.jit(nopython=True)
 def translate_to_omega(key):
+    """Function that translates a key to its omega values.
+
+    :param key: Key to translate.
+    :type key: Tuple of Tuple of int64.
+    :return: Omega values.
+    :rtype: Tuple of int64.
+    """
     left = key[0]
     right = key[1]
     if left[0] == -1:
