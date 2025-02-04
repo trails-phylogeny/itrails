@@ -6,9 +6,9 @@ import numpy as np
 
 # Functions
 from combine_states import combine_states_wrapper
-from cut_times import cutpoints_AB, cutpoints_ABC, get_times
+from cutpoints import cutpoints_AB, cutpoints_ABC, get_times
 from expm import expm
-from run_mc import run_mc_AB, run_mc_ABC
+from run_markov_chain import run_markov_chain_AB, run_markov_chain_ABC
 from trans_mat import get_trans_mat, wrapper_state_general
 
 
@@ -98,7 +98,7 @@ def get_joint_prob_mat(
     inverted_omega_nonrev_counts[0] = nb.typed.List([0])
     inverted_omega_nonrev_counts[1] = nb.typed.List([3])
 
-    final_AB = run_mc_AB(
+    final_AB = run_markov_chain_AB(
         trans_mat_ab,
         times_AB,
         omega_dict_2,
@@ -125,7 +125,7 @@ def get_joint_prob_mat(
     inverted_omega_nonrev_counts[1] = nb.typed.List([3, 5, 6])
     inverted_omega_nonrev_counts[2] = nb.typed.List([7])
 
-    final_ABC = run_mc_ABC(
+    final_ABC = run_markov_chain_ABC(
         trans_mat_abc,
         times_ABC,
         omega_dict_3,

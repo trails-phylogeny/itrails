@@ -372,7 +372,7 @@ def deepest_parallel_inner(
     return flattened_keys, flattened_results, total_valid
 
 
-def run_mc_AB(
+def run_markov_chain_AB(
     trans_mat,
     times,
     omega_dict,
@@ -541,7 +541,7 @@ def run_mc_AB(
     return prob_dict
 
 
-def run_mc_ABC(
+def run_markov_chain_ABC(
     trans_mat,
     times,
     omega_dict,
