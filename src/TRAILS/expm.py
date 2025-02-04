@@ -1,8 +1,8 @@
-
+from __future__ import division, print_function
 import numpy as np
 import numba as nb
 import math
-from __future__ import division, print_function
+
 
 
 @nb.jit(nopython=True, parallel=False, fastmath=True)
