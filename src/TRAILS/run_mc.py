@@ -1,10 +1,9 @@
-from scipy.sparse import csr_matrix
+from os import path
 import numpy as np
-from numba import jit
 from expm import expm
-from combine_states import combine_by_omega
+from combine_omegas import combine_by_omega
 from vanloan import vanloan_general
-from vanloan_identify import get_all_paths_vl_jit
+from vanloan_identify import vanloan_identify_wrapper
 from deep_identify import get_all_paths_deep
 from remove_absorbing import remove_absorbing_indices
 from deepest_ti import deepest_ti
@@ -97,14 +96,11 @@ def compute_matrices_end_15(
     prob_mats, exponential_time, omega_end_masks, num_combinations
 ):
     results = []
-    # Launch Ray tasks
     for i in range(num_combinations):
         result = compute_matrix_end.remote(
             prob_mats[i], exponential_time, omega_end_masks[i]
         )
         results.append(result)
-
-    # Gather results
     results = ray.get(results)
     return np.array(results)
 
@@ -113,14 +109,11 @@ def compute_matrices_start_end_15(
     prob_mats, exponential_time, omega_start_masks, omega_end_masks, num_combinations
 ):
     results = []
-
     for i in range(num_combinations):
         result = compute_matrix_start_end.remote(
             prob_mats[i], exponential_time, omega_start_masks[i], omega_end_masks[i]
         )
         results.append(result)
-
-    # Gather results
     results = ray.get(results)
     return np.array(results)
 
@@ -129,115 +122,13 @@ def compute_matrices_start_end_203(
     prob_mats, exponential_times, omega_start_masks, omega_end_masks, num_combinations
 ):
     results = []
-
     for i in range(num_combinations):
         result = compute_matrix_start_end.remote(
             prob_mats[i], exponential_times[i], omega_start_masks[i], omega_end_masks[i]
         )
         results.append(result)
-
-    # Gather results
     results = ray.get(results)
     return np.array(results)
-
-
-""" 
-@nb.jit(nopython=True, parallel=True)
-def compute_matrices_start_end_203(
-    prob_mats, exponential_time, omega_start_masks, omega_end_masks, num_combinations
-):
-    prob_mats = np.ascontiguousarray(prob_mats)
-    # exponential_time = (exponential_time)
-    omega_start_masks = np.ascontiguousarray(omega_start_masks)
-    omega_end_masks = np.ascontiguousarray(omega_end_masks)
-
-    # Pre-allocate result array for the actual number of combinations
-    results = np.zeros((num_combinations, 1, 203), dtype=np.float64)
-    for i in nb.prange(num_combinations):
-        sliced_mat = (
-            (omega_start_masks[i])  # Shape: (203, 1)
-            @ (exponential_time[i])  # Shape: (203, 203)
-            @ (omega_end_masks[i])  # Shape: (1, 203)
-        )  # Resulting shape: (203, 203)
-
-        results[i] = (prob_mats[i]) @ (sliced_mat)
-    return results
- """
-
-""" 
-@nb.jit(nopython=True, parallel=True)
-def vanloan_parallel(
-    vl_idx,
-    time,
-    trans_mat,
-    omega_dict,
-    vl_keys_acc_array,
-    vl_paths_acc_array,
-    vl_omega_masks_start,
-    vl_omega_masks_end,
-    vl_prob_mats,
-):
-    max_key = 0
-    for key_array in vl_keys_acc_array:
-        for key in key_array:
-            max_key = max(max_key, key[-1])
-    results = np.zeros((vl_idx, 9, max_key, 203, 203))
-
-    valid_counts = np.zeros(vl_idx, dtype=np.int64)
-    for i in nb.prange(vl_idx):
-        key_array = vl_keys_acc_array[i]
-        paths_array = vl_paths_acc_array[i]
-        valid_length = 0
-
-        for k in range(len(key_array)):
-            if key_array[k, -1] == 0:
-                break
-            valid_length += 1
-        valid_counts[i] = valid_length
-        for j in nb.prange(valid_length):
-            key = key_array[j]
-            key_last = key[-1]
-            for k in nb.prange(key_last):
-                path = paths_array[j][k][1 : paths_array[j][k][0][0] + 1]
-                result = vanloan_general(trans_mat, path, time, omega_dict)
-                results[i, j, k, :, :] = result
-    final_results = np.zeros((vl_idx, 9, 1, 203))
-    final_keys = np.zeros((vl_idx, 9, 6), dtype=np.int64)
-    # vl_sums = np.zeros((9, 203, 203))
-    for i in nb.prange(vl_idx):
-        key_array = vl_keys_acc_array[i]
-        valid_length = valid_counts[i]
-        omega_start_mask = vl_omega_masks_start[i]
-        omega_end_mask = vl_omega_masks_end[i]
-        all_res = results[i]
-
-        for j in range(valid_length):
-            key = key_array[j]
-            res_by_key = all_res[j]
-
-            # vl_sums[j, :, :] = results[i, j, :, :, :].sum(axis=0)  # echar ojo
-            sliced_mat = (
-                omega_start_mask @ res_by_key[:, :, :].sum(axis=0) @ omega_end_mask
-            )
-
-            final_results[i, j] = vl_prob_mats[i] @ sliced_mat  # Shape: (1, 203)
-            final_keys[i, j] = key[:-1]
-
-    total_valid = valid_counts.sum()
-    flattened_results = np.zeros((total_valid, 1, 203))
-    flattened_keys = np.zeros((total_valid, 6), dtype=np.int64)
-
-    idx = 0
-    for i in range(vl_idx):
-        valid_length = valid_counts[i]
-        for j in range(valid_length):
-            flattened_results[idx] = final_results[i, j]
-            flattened_keys[idx] = final_keys[i, j]
-
-            idx += 1
-
-    return flattened_keys, flattened_results, total_valid
- """
 
 
 @ray.remote
@@ -333,7 +224,89 @@ def vanloan_parallel_inner(
     return flattened_keys, flattened_results, total_valid
 
 
-# @nb.jit(nopython=True)
+@ray.remote
+def deepest_worker_inner(
+    idx_i,
+    idx_j,
+    trans_mat_noabs,
+    omega_dict_noabs_serialized,  # Serialized dictionary
+    key,
+    paths_array_j,
+    acc_prob_mat_noabs,
+    path_lengths_j,
+):
+    """Ray worker function for a single (i, j) pair."""
+    # Deserialize omega_dict
+    omega_dict_noabs = pickle.loads(omega_dict_noabs_serialized)
+
+    num_subpaths = len(path_lengths_j)
+    results = np.zeros((num_subpaths, 201, 201))
+
+    # Compute intermediate results
+    for k in range(num_subpaths):
+        path = paths_array_j[k][: path_lengths_j[k]]
+        results[k] = deepest_ti(trans_mat_noabs, omega_dict_noabs, path)
+
+    # Summing results and computing sliced matrix
+    deep_ti_sum = results.sum(axis=0)
+    final_result = acc_prob_mat_noabs @ deep_ti_sum
+
+    return idx_i, idx_j, final_result, key
+
+
+def deepest_parallel_inner(
+    deepest_idx,
+    trans_mat_noabs,
+    omega_dict_noabs,
+    deepest_keys_acc_array,
+    deepest_paths_acc_array,
+    deepest_path_lengths_array,
+    acc_prob_mats_noabs,
+):
+    omega_dict_python = dict(omega_dict_noabs)
+
+    omega_dict_noabs_serialized = pickle.dumps(omega_dict_python)
+    """Parallelize inner valid_length loop using Ray."""
+    # Initialize Ray
+    if not ray.is_initialized():
+        ray.init()
+    tasks = []
+    for i in range(deepest_idx):
+        key_array = deepest_keys_acc_array[i]
+        paths_array = deepest_paths_acc_array[i]
+        acc_prob_mat_noabs = acc_prob_mats_noabs[i]
+
+        for j, key in enumerate(key_array):
+            path_lengths_j = deepest_path_lengths_array[i][j]
+            if all(x == 0 for x in key):
+                break
+            task = deepest_worker_inner.remote(
+                i,
+                j,
+                trans_mat_noabs,
+                omega_dict_noabs_serialized,
+                key,
+                paths_array[j][: np.count_nonzero(path_lengths_j)],
+                acc_prob_mat_noabs,
+                path_lengths_j[: np.count_nonzero(path_lengths_j)],
+            )
+            tasks.append(task)
+
+    # Gather results
+    results = ray.get(tasks)
+
+    # Combine results
+    total_valid = len(results)
+    flattened_results = np.zeros((total_valid, 1, 201))
+    flattened_keys = np.zeros((total_valid, 6), dtype=np.int64)
+
+    for idx, (i, j, final_result, final_key) in enumerate(results):
+        flattened_results[idx] = final_result
+        flattened_keys[idx] = final_key
+
+    return flattened_keys, flattened_results, total_valid
+
+
 def run_mc_AB(
     trans_mat,
     times,
@@ -489,7 +462,6 @@ def run_mc_AB(
     return prob_dict
 
 
-# @nb.jit(nopython=True)
 def run_mc_ABC(
     trans_mat,
     times,
@@ -498,10 +470,9 @@ def run_mc_ABC(
     omega_nonrev_counts,
     inverted_omega_nonrev_counts,
     n_int_ABC,
+    species,
+    absorbing_state=(7, 7),
 ):
-
-    # (-1, -1, -1)(-1, -1, -1)
-    # 1x203
 
     for step in range(n_int_ABC - 1):
         exponential_time = expm(trans_mat * times[step])
@@ -518,12 +489,14 @@ def run_mc_ABC(
             keys = np.zeros((324, 6), dtype=np.int64)
             vl_keys_acc_array = np.zeros((324, 9, 7), dtype=np.int64)
             vl_paths_acc_array = np.zeros((324, 9, 15, 16, 2), dtype=np.int64)
-            result_idx = 0
-            vl_idx = 0
-            prob_mat = prob_dict[path]
-            l_path, r_path = path[0], path[1]
             l_results = np.full((6, 3), -1, dtype=np.int64)
             r_results = np.full((6, 3), -1, dtype=np.int64)
+            result_idx = 0
+            vl_idx = 0
+
+            prob_mat = prob_dict[path]
+            l_path, r_path = path[0], path[1]
+
             l_results[0] = l_path
             r_results[0] = r_path
 
@@ -581,10 +554,11 @@ def run_mc_ABC(
                                 [omega_start[0], omega_start[1]]
                             )
                             omega_end_array = np.array([omega_end[0], omega_end[1]])
+
                             (
                                 key_array,
                                 paths_array,
-                            ) = get_all_paths_vl_jit(
+                            ) = vanloan_identify_wrapper(
                                 omega_start_array,
                                 omega_end_array,
                                 omega_nonrev_counts,
@@ -651,9 +625,7 @@ def run_mc_ABC(
                 omega_masks_end,
                 result_idx,
             )
-            # compute_matrices_start_end_203.parallel_diagnostics(level=4)
             for i in range(result_idx):
-
                 prob_dict[
                     (
                         (keys[i][0], keys[i][1], keys[i][2]),
@@ -665,7 +637,6 @@ def run_mc_ABC(
                     )
                 ] = results_novl[i]
             for i in range(total_valid):
-
                 prob_dict[
                     (
                         (
@@ -680,286 +651,283 @@ def run_mc_ABC(
                         ),
                     )
                 ] = flattened_results[i]
-    # step += 1
-
-    """ og_keys = list(prob_dict.keys())
-    noabs_mask = omega_dict[(7, 7)] == False
+    og_keys = list(prob_dict.keys())
+    noabs_mask = omega_dict[absorbing_state] == False
     trans_mat_noabs = trans_mat[noabs_mask][:, noabs_mask]
     omega_dict_noabs = remove_absorbing_indices(
-        omega_dict=omega_dict, absorbing_key=(7, 7), species=3
+        omega_dict=omega_dict, absorbing_key=absorbing_state, species=species
     )
+    prob_dict_sum = {}
     for path in og_keys:
-        l_path, r_path = path[0], path[1]
-        if (l_path[2] == -1 and l_path[2] == l_path[1]) or (
-            r_path[2] == -1 and r_path[2] == r_path[1]
+        (l_path, r_path) = path
+        acc_prob_mats_noabs = np.zeros((324, 1, 201), dtype=np.float64)
+        deepest_keys_acc_array = np.zeros((324, 9, 6), dtype=np.int64)
+        deepest_paths_acc_array = np.zeros((324, 9, 15, 16, 2), dtype=np.int64)
+        deepest_path_lengths_array = np.zeros((324, 9, 9), dtype=np.int64)
+        deepest_idx = 0
+        prob_mat = prob_dict[path]
+
+        # Case 1: ((Number != -1, Number != -1, Number != -1), (Number != -1, Number != -1, Number != -1))
+        if all(x != -1 for x in l_path) and all(x != -1 for x in r_path):
+            prob_dict_sum[path] = np.sum(prob_mat)
+            continue
+
+        # Case 2: ((Number != -1, Number != -1, Number != -1), (Number != -1, Number != -1, -1))
+        elif (
+            all(x != -1 for x in l_path)
+            and r_path[2] == -1
+            and all(x != -1 for x in r_path[:2])
         ):
-            prob_mat_sliced = prob_dict[path][:, noabs_mask]
-            omega_end = translate_to_omega(path)
-            all_paths = get_all_paths_deep(
-                omega_end,
-                (7, 7),
-                omega_nonrev_counts,
-                inverted_omega_nonrev_counts,
+            # Replace path by changing -1 to `n_int_ABC - 1`
+            new_key = (l_path, (r_path[0], r_path[1], n_int_ABC - 1))
+            prob_dict_sum[new_key] = np.sum(prob_dict[path])
+            prob_dict[new_key] = prob_dict.pop(path)
+            continue
+
+        # Case 3: ((Number != -1, Number != -1, Number != -1), (-1, -1, -1))
+        elif all(x != -1 for x in l_path) and all(x == -1 for x in r_path):
+            l_tuple = (int(l_path[0]), int(l_path[1]), int(l_path[2]))
+            r_tuple = (int(r_path[0]), n_int_ABC - 1, n_int_ABC - 1)
+            new_key = (
+                l_tuple,
+                r_tuple,
             )
-            for by_omega in all_paths.keys():
+            l_row = [l_tuple[0], l_tuple[1], l_tuple[2]]
+            r_row = [r_tuple[0], r_tuple[1], r_tuple[2]]
+            new_path = new_key
+            omega_start = translate_to_omega(path)
 
-                new_omega_l = (
-                    1
-                    if by_omega[0] == 3
-                    else (
-                        2 if by_omega[0] == 5 else 3 if by_omega[0] == 6 else l_tuple[0]
-                    )
-                )
-                new_omega_r = (
-                    1
-                    if by_omega[1] == 3
-                    else (
-                        2 if by_omega[1] == 5 else 3 if by_omega[1] == 6 else r_tuple[0]
-                    )
-                )
-                l_tuple = (
-                    (l_path[0], l_path[1], l_path[2])
-                    if not (l_path[2] == -1 and l_path[2] == l_path[1])
-                    else (new_omega_l, step, step)
-                )
-                r_tuple = (
-                    (r_path[0], r_path[1], r_path[2])
-                    if not (r_path[2] == -1 and r_path[2] == r_path[1])
-                    else (new_omega_r, step, step)
-                )
-                new_key = (l_tuple, r_tuple)
-
-                deep_ti_sum = np.zeros_like(trans_mat_noabs)
-                for deep_ti_path in all_paths[by_omega]:
-                    deep_ti = deep_ti = deepest_ti(
-                        trans_mat_noabs, omega_dict_noabs, deep_ti_path
-                    )
-
-                    deep_ti_sum += deep_ti
-
-                prob_dict[new_key] = prob_mat_sliced @ deep_ti_sum
-            del prob_dict[path]
-
-    og_keys = list(prob_dict.keys())
-    for path in og_keys:
-        l_path, r_path = path[0], path[1]
-        if l_path[2] == -1 and r_path[2] == -1:
-            prob_mat = prob_dict[path]
-            l_tuple = (l_path[0], l_path[1], step)
-            r_tuple = (r_path[0], r_path[1], step)
-            new_key = (l_tuple, r_tuple)
-            prob_dict[new_key] = prob_mat
-            del prob_dict[path]
-        elif l_path[2] == -1:
-            prob_mat = prob_dict[path]
-            l_tuple = (l_path[0], l_path[1], step)
-            r_tuple = (r_path[0], r_path[1], r_path[2])
-            new_key = (l_tuple, r_tuple)
-            prob_dict[new_key] = prob_mat
-            del prob_dict[path]
-        elif r_path[2] == -1:
-            prob_mat = prob_dict[path]
-            l_tuple = (l_path[0], l_path[1], l_path[2])
-            r_tuple = (r_path[0], r_path[1], step)
-            new_key = (l_tuple, r_tuple)
-            prob_dict[new_key] = prob_mat
-            del prob_dict[path] """
-
-    return prob_dict
-
-
-""" 
-def run_mc(
-    trans_mat,
-    times,
-    omega_dict,
-    pi_start,
-    omega_nonrev_counts,
-    inverted_omega_nonrev_counts,
-    absorbing_state,
-    species,
-    start,
-    key_type,
-    stage,
-    n_int_AB,
-    n_int_ABC,
-):
-    step = start
-    noabs_mask = omega_dict[absorbing_state] == False
-    if start == 0:
-        step += 1
-        exponential_time_0 = expm(trans_mat * times[0])
-        original_keys = list(pi_start.keys())
-        for key, value in omega_dict.items():
-            sliced_mat = exponential_time_0 * value[np.newaxis, :]
-            for og_key in original_keys:
-                og_value = pi_start[og_key]
-                with objmode(new_key="UniTuple(UniTuple(int64, 2), 8)"):
-                    new_key = list(og_key)
-                    new_key[1] = key
-
-                    new_key = tuple(new_key)
-                pi_start[new_key] = og_value @ sliced_mat
-
-        for og_key in original_keys:
-            del pi_start[og_key]
-
-    for i in range(step, len(times) + start):
-
-        if times[i - start] != float("inf"):
-            original_keys = list(pi_start.keys())
-            exponential_time = expm(trans_mat * times[i - start])
-            for path in original_keys:
-                value = pi_start[path]
-                omega_init = path[i]
-                omega_value = omega_dict[omega_init]
-                for omega_fin, value2 in omega_dict.items():
-                    if (
-                        omega_init[0] == omega_fin[0]
-                        or omega_nonrev_counts[omega_init[0]]
-                        < omega_nonrev_counts[omega_fin[0]]
-                    ) and (
-                        omega_init[1] == omega_fin[1]
-                        or omega_nonrev_counts[omega_init[1]]
-                        < omega_nonrev_counts[omega_fin[1]]
-                    ):
-
-                        all_paths = get_all_paths_vl(
-                            omega_init,
-                            omega_fin,
-                            omega_nonrev_counts,
-                            inverted_omega_nonrev_counts,
-                        )
-                        if len(all_paths.keys()) == 1:
-                            # if len(all_possible_vl[(omega_init, omega_fin)].keys()) == 1:
-
-                            sliced_mat = (
-                                omega_value[:, np.newaxis]
-                                * exponential_time
-                                * value2[np.newaxis, :]
-                            )
-                            updated_path = nb.types.UniTuple(
-                                nb.types.UniTuple(int64, 2), len(path)
-                            )
-                            # updated_path = list(path)
-                            # updated_path[i + 1] = omega_fin
-
-                            updated_path = nb.types.UniTuple(
-                                nb.types.int64, len(updated_path)
-                            )
-                            for idx in range(len(path)):
-                                if idx == i + 1:
-                                    updated_path[idx] = key  # Update the specific index
-                                else:
-                                    updated_path[idx] = path[idx]
-                            pi_start[updated_path] = np.asanyarray(value @ sliced_mat)
-
-                        elif len(all_paths.keys()) > 1:
-                            # elif len(all_possible_vl[(omega_init, omega_fin)].keys()) > 1:
-                            # all_paths = all_possible_vl[(omega_init, omega_fin)]
-                            for by_omega in all_paths.keys():
-                                vl_sum = np.zeros_like(trans_mat)
-                                for vl_path in all_paths[by_omega]:
-                                    vl_res = vanloan_general(
-                                        trans_mat, vl_path, times[i - start], omega_dict
-                                    )
-
-                                    vl_sum += vl_res
-
-                                vl_sum_slice = (
-                                    omega_value[:, np.newaxis]
-                                    * vl_sum
-                                    * value2[np.newaxis, :]
-                                )
-                                updated_path = nb.types.UniTuple(
-                                    nb.types.int64, len(updated_path)
-                                )
-                                for idx in range(len(path)):
-                                    if idx == i + 1:
-                                        updated_path[idx] = (
-                                            key  # Update the specific index
-                                        )
-                                    elif idx == len(path) - 1:
-                                        updated_path[idx] = by_omega
-                                    else:
-                                        updated_path[idx] = path[idx]
-                                # updated_path = list(path)
-                                # updated_path[i + 1] = omega_fin
-                                # updated_path[-1] = by_omega
-                                # updated_path = nb.types.UniTuple(
-                                #    nb.types.int64, len(updated_path)
-                                # )(updated_path)
-                                pi_start[updated_path] = value @ vl_sum_slice
-            for path in original_keys:
-                del pi_start[path]
-
-        elif times[i - start] == float("inf"):
-            original_keys = list(pi_start.keys())
-            trans_mat_noabs = trans_mat[noabs_mask][:, noabs_mask]
-            omega_dict_noabs = remove_absorbing_indices(
-                omega_dict=omega_dict, absorbing_key=absorbing_state, species=species
-            )
-            for path in original_keys:
-                matrix_0 = pi_start[path]
-                end_state = path[i]
-                by_omega_0 = path[-1]
-                all_paths = get_all_paths_deep(
-                    end_state,
+            (keys_array, paths_array, path_lengths_array, max_subpaths) = (
+                get_all_paths_deep(
+                    omega_start,
                     absorbing_state,
                     omega_nonrev_counts,
                     inverted_omega_nonrev_counts,
+                    new_path,
                 )
-                if len(all_paths.keys()) > 1:
-                    # if len(all_possible_deep[(end_state, absorbing_state)].keys()) > 1:
-                    matrix_0_noabs = matrix_0[:, noabs_mask]
-                    # all_paths = all_possible_deep[(end_state, absorbing_state)]
-                    for by_omega in all_paths.keys():
-                        deep_ti_sum = np.zeros_like(trans_mat_noabs)
-                        for deep_path in all_paths[by_omega]:
+            )
+            num_keys = keys_array.shape[0]
+            num_paths = paths_array.shape[0]
+            keys_per_path = paths_array.shape[1]
+            subpaths_per_path = path_lengths_array.shape[1]
+            deepest_keys_acc_array[deepest_idx, :num_keys] = keys_array[:num_keys]
+            deepest_paths_acc_array[
+                deepest_idx, :num_paths, :keys_per_path, :max_subpaths
+            ] = paths_array
+            deepest_path_lengths_array[deepest_idx, :num_keys, :subpaths_per_path] = (
+                path_lengths_array
+            )
+            acc_prob_mats_noabs[deepest_idx] = prob_mat[:, noabs_mask]
+            deepest_idx += 1
+            prob_dict.pop(path)
 
-                            deep_ti = deepest_ti(
-                                trans_mat_noabs, omega_dict_noabs, deep_path
-                            )
+        # Case 4: ((Number != -1, Number != -1, -1), (Number != -1, Number != -1, Number != -1))
+        elif (
+            l_path[2] == -1
+            and all(x != -1 for x in l_path[:2])
+            and all(x != -1 for x in r_path)
+        ):
+            # Replace path by changing -1 to `n_int_ABC - 1`
+            new_key = ((l_path[0], l_path[1], n_int_ABC - 1), r_path)
+            prob_dict_sum[new_key] = np.sum(prob_dict[path])
+            prob_dict[new_key] = prob_dict.pop(path)
+            continue
 
-                            deep_ti_sum += deep_ti
-                        updated_omega = combine_by_omega(by_omega_0, by_omega)
-                        updated_path = nb.types.UniTuple(
-                            nb.types.int64, len(updated_path)
-                        )
-                        for idx in range(len(path)):
-                            if idx == i + 1:
-                                updated_path[idx] = (
-                                    absorbing_state  # Update the specific index
-                                )
-                            elif idx == len(path) - 1:
-                                updated_path[idx] = updated_omega
-                            else:
-                                updated_path[idx] = path[idx]
-                        # updated_path = list(path)
-                        # updated_path[i + 1] = absorbing_state
-                        # updated_path[-1] = updated_omega
-                        # updated_path = nb.types.UniTuple(
-                        #    nb.types.int64, len(updated_path)
-                        # )(updated_path)
-                        result = matrix_0_noabs @ deep_ti_sum
+        # Case 5: ((Number != -1, Number != -1, -1), (Number != -1, Number != -1, -1))
+        elif (
+            l_path[2] == -1
+            and all(x != -1 for x in l_path[:2])
+            and r_path[2] == -1
+            and all(x != -1 for x in r_path[:2])
+        ):
+            # Replace path by changing -1 to `n_int_ABC - 1`
+            new_key = (
+                (l_path[0], l_path[1], n_int_ABC - 1),
+                (r_path[0], r_path[1], n_int_ABC - 1),
+            )
+            prob_dict_sum[new_key] = np.sum(prob_dict[path])
+            prob_dict[new_key] = prob_dict.pop(path)
+            continue
 
-                        pi_start[updated_path] = result
-                elif len(all_paths.keys()) == 1:
-                    # elif len(all_possible_deep[(end_state, absorbing_state)].keys()) == 1:
-                    updated_path = nb.types.UniTuple(nb.types.int64, len(updated_path))
-                    for idx in range(len(path)):
-                        if idx == i + 1:
-                            updated_path[idx] = absorbing_state
-                        else:
-                            updated_path[idx] = path[idx]
-                    # updated_path = list(path)
-                    # updated_path[i + 1] = absorbing_state
-                    # updated_path = nb.types.UniTuple(nb.types.int64, len(updated_path))(
-                    #    updated_path
-                    # )
-                    pi_start[updated_path] = matrix_0
-            for path in original_keys:
-                del pi_start[path]
+        # Case 6: ((Number != -1, Number != -1, -1), (-1, -1, -1))
+        elif (
+            l_path[2] == -1
+            and all(x != -1 for x in l_path[:2])
+            and all(x == -1 for x in r_path)
+        ):
+            l_tuple = (int(l_path[0]), int(l_path[1]), n_int_ABC - 1)
+            r_tuple = (int(r_path[0]), n_int_ABC - 1, n_int_ABC - 1)
+            new_key = (
+                l_tuple,
+                r_tuple,
+            )
+            l_row = [l_tuple[0], l_tuple[1], l_tuple[2]]
+            r_row = [r_tuple[0], r_tuple[1], r_tuple[2]]
+            new_path = new_key
+            omega_start = translate_to_omega(path)
 
-    return pi_start
- """
+            (keys_array, paths_array, path_lengths_array, max_subpaths) = (
+                get_all_paths_deep(
+                    omega_start,
+                    absorbing_state,
+                    omega_nonrev_counts,
+                    inverted_omega_nonrev_counts,
+                    new_path,
+                )
+            )
+            num_keys = keys_array.shape[0]
+            num_paths = paths_array.shape[0]
+            keys_per_path = paths_array.shape[1]
+            subpaths_per_path = path_lengths_array.shape[1]
+            deepest_keys_acc_array[deepest_idx, :num_keys] = keys_array[:num_keys]
+            deepest_paths_acc_array[
+                deepest_idx, :num_paths, :keys_per_path, :max_subpaths
+            ] = paths_array  # [:num_paths]
+            deepest_path_lengths_array[deepest_idx, :num_keys, :subpaths_per_path] = (
+                path_lengths_array
+            )
+            acc_prob_mats_noabs[deepest_idx] = prob_mat[:, noabs_mask]
+            deepest_idx += 1
+            prob_dict.pop(path)
+
+        # Case 7: ((-1, -1, -1), (Number != -1, Number != -1, Number != -1))
+        elif all(x == -1 for x in l_path) and all(x != -1 for x in r_path):
+            l_tuple = (int(l_path[0]), n_int_ABC - 1, n_int_ABC - 1)
+            r_tuple = (int(r_path[0]), int(r_path[1]), int(r_path[2]))
+            new_key = (
+                l_tuple,
+                r_tuple,
+            )
+            l_row = [l_tuple[0], l_tuple[1], l_tuple[2]]
+            r_row = [r_tuple[0], r_tuple[1], r_tuple[2]]
+            new_path = new_key
+            omega_start = translate_to_omega(path)
+
+            (keys_array, paths_array, path_lengths_array, max_subpaths) = (
+                get_all_paths_deep(
+                    omega_start,
+                    absorbing_state,
+                    omega_nonrev_counts,
+                    inverted_omega_nonrev_counts,
+                    new_path,
+                )
+            )
+            num_keys = keys_array.shape[0]
+            num_paths = paths_array.shape[0]
+            keys_per_path = paths_array.shape[1]
+            subpaths_per_path = path_lengths_array.shape[1]
+            deepest_keys_acc_array[deepest_idx, :num_keys] = keys_array[:num_keys]
+            deepest_paths_acc_array[
+                deepest_idx, :num_paths, :keys_per_path, :max_subpaths
+            ] = paths_array
+            deepest_path_lengths_array[deepest_idx, :num_keys, :subpaths_per_path] = (
+                path_lengths_array
+            )
+            acc_prob_mats_noabs[deepest_idx] = prob_mat[:, noabs_mask]
+            deepest_idx += 1
+            prob_dict.pop(path)
+
+        # Case 8: ((-1, -1, -1), (Number != -1, Number != -1, -1))
+        elif (
+            all(x == -1 for x in l_path)
+            and r_path[2] == -1
+            and all(x != -1 for x in r_path[:2])
+        ):
+            l_tuple = (int(l_path[0]), n_int_ABC - 1, n_int_ABC - 1)
+            r_tuple = (int(r_path[0]), int(r_path[1]), n_int_ABC - 1)
+            new_key = (
+                l_tuple,
+                r_tuple,
+            )
+            l_row = [l_tuple[0], l_tuple[1], l_tuple[2]]
+            r_row = [r_tuple[0], r_tuple[1], r_tuple[2]]
+            new_path = new_key
+            omega_start = translate_to_omega(path)
+
+            (keys_array, paths_array, path_lengths_array, max_subpaths) = (
+                get_all_paths_deep(
+                    omega_start,
+                    absorbing_state,
+                    omega_nonrev_counts,
+                    inverted_omega_nonrev_counts,
+                    new_path,
+                )
+            )
+            num_keys = keys_array.shape[0]
+            num_paths = paths_array.shape[0]
+            keys_per_path = paths_array.shape[1]
+            subpaths_per_path = path_lengths_array.shape[1]
+            deepest_keys_acc_array[deepest_idx, :num_keys] = keys_array[:num_keys]
+            deepest_paths_acc_array[
+                deepest_idx, :num_paths, :keys_per_path, :max_subpaths
+            ] = paths_array
+            deepest_path_lengths_array[deepest_idx, :num_keys, :subpaths_per_path] = (
+                path_lengths_array
+            )
+            acc_prob_mats_noabs[deepest_idx] = prob_mat[:, noabs_mask]
+            deepest_idx += 1
+            prob_dict.pop(path)
+
+        # Case 9: ((-1, -1, -1), (-1, -1, -1))
+        elif all(x == -1 for x in l_path) and all(x == -1 for x in r_path):
+            l_tuple = (int(l_path[0]), n_int_ABC - 1, n_int_ABC - 1)
+            r_tuple = (int(r_path[0]), n_int_ABC - 1, n_int_ABC - 1)
+            new_key = (
+                l_tuple,
+                r_tuple,
+            )
+            l_row = [l_tuple[0], l_tuple[1], l_tuple[2]]
+            r_row = [r_tuple[0], r_tuple[1], r_tuple[2]]
+            new_path = new_key
+            omega_start = translate_to_omega(path)
+
+            (keys_array, paths_array, path_lengths_array, max_subpaths) = (
+                get_all_paths_deep(
+                    omega_start,
+                    absorbing_state,
+                    omega_nonrev_counts,
+                    inverted_omega_nonrev_counts,
+                    new_path,
+                )
+            )
+            num_keys = keys_array.shape[0]
+            num_paths = paths_array.shape[0]
+            keys_per_path = paths_array.shape[1]
+            subpaths_per_path = path_lengths_array.shape[1]
+            deepest_keys_acc_array[deepest_idx, :num_keys] = keys_array[:num_keys]
+            deepest_paths_acc_array[
+                deepest_idx, :num_paths, :keys_per_path, :max_subpaths
+            ] = paths_array
+            deepest_path_lengths_array[deepest_idx, :num_keys, :subpaths_per_path] = (
+                path_lengths_array
+            )
+            acc_prob_mats_noabs[deepest_idx] = prob_mat[:, noabs_mask]
+            deepest_idx += 1
+            prob_dict.pop(path)
+
+        flattened_keys, flattened_results, total_valid = deepest_parallel_inner(
+            deepest_idx,
+            trans_mat_noabs,
+            omega_dict_noabs,
+            deepest_keys_acc_array,
+            deepest_paths_acc_array,
+            deepest_path_lengths_array,
+            acc_prob_mats_noabs,
+        )
+
+        for i in range(total_valid):
+            prob_dict_sum[
+                (
+                    (
+                        flattened_keys[i][0],
+                        flattened_keys[i][1],
+                        flattened_keys[i][2],
+                    ),
+                    (
+                        flattened_keys[i][3],
+                        flattened_keys[i][4],
+                        flattened_keys[i][5],
+                    ),
+                )
+            ] = np.sum(flattened_results[i])
+    return prob_dict_sum
