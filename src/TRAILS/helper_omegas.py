@@ -1,4 +1,6 @@
 import numba as nb
+import numpy as np
+from trans_mat import bell_numbers
 
 
 @nb.jit(nopython=True)
@@ -81,3 +83,37 @@ def translate_to_omega(key):
         elif right[2] == -1:
             r_omega = 6
     return (l_omega, r_omega)
+
+
+
+@nb.jit(nopython=True)
+def remove_absorbing_indices(
+    omega_dict, absorbing_key, species, tuple_omegas=nb.types.Tuple((nb.types.int64, nb.types.int64))
+):
+    """
+    Function that removes the absorbing states from the omega dictionary.
+
+    :param omega_dict: Dictionary of omega indices (key) and vector of booleans where each key has the states (value).
+    :type omega_dict: Numba typed dictionary.
+    :param absorbing_key: Key of the absorbing states.
+    :type absorbing_key: Tuple of int64.
+    :param species: Number of species.
+    :type species: int64.
+    :param tuple_omegas: Type of omega, defaults to nb.types.Tuple((nb.types.int64, nb.types.int64))
+    :type tuple_omegas: Numba type, optional
+    :return: Dictionary without the absorbing states.
+    :rtype: Numba typed dictionary.
+    """
+    absorbing_indices = np.where(omega_dict[absorbing_key])[0]
+    total_states = bell_numbers(2 * species) - 2
+    omega_dict_noabs = nb.typed.Dict.empty(
+        key_type=tuple_omegas,
+        value_type=np.zeros(total_states, dtype=nb.types.boolean),
+    )
+
+    for key, value in omega_dict.items():
+        if key != absorbing_key:
+            new_array = np.delete(value, absorbing_indices)
+            omega_dict_noabs[key] = new_array
+
+    return omega_dict_noabs

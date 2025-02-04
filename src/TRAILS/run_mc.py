@@ -2,15 +2,11 @@ import pickle
 
 import numpy as np
 import ray
-from deep_identify import get_all_paths_deep
-from deepest_ti import deepest_ti
+from deepest_ti import deep_identify_wrapper, deepest_ti
 from expm import expm
-from helper_omegas import translate_to_omega
-from remove_absorbing import remove_absorbing_indices
-from vanloan import vanloan_general
-from vanloan_identify import vanloan_identify_wrapper
+from helper_omegas import remove_absorbing_indices, translate_to_omega
+from vanloan import vanloan, vanloan_identify_wrapper
 
-ray.init()
 
 @ray.remote
 def compute_matrix_end(prob_mat, exponential_time, omega_end_mask):
@@ -160,7 +156,7 @@ def vanloan_worker_inner(
     # Compute intermediate results
     for k in range(key_last):
         path = paths_array_j[k][1 : paths_array_j[k][0][0] + 1]
-        results[k] = vanloan_general(trans_mat, path, time, omega_dict)
+        results[k] = vanloan(trans_mat, path, time, omega_dict)
 
     # Summing results and computing sliced matrix
     sliced_mat = omega_start_mask @ results.sum(axis=0) @ omega_end_mask
@@ -801,7 +797,7 @@ def run_mc_ABC(
             omega_start = translate_to_omega(path)
 
             (keys_array, paths_array, path_lengths_array, max_subpaths) = (
-                get_all_paths_deep(
+                deep_identify_wrapper(
                     omega_start,
                     absorbing_state,
                     omega_nonrev_counts,
@@ -868,7 +864,7 @@ def run_mc_ABC(
             omega_start = translate_to_omega(path)
 
             (keys_array, paths_array, path_lengths_array, max_subpaths) = (
-                get_all_paths_deep(
+                deep_identify_wrapper(
                     omega_start,
                     absorbing_state,
                     omega_nonrev_counts,
@@ -905,7 +901,7 @@ def run_mc_ABC(
             omega_start = translate_to_omega(path)
 
             (keys_array, paths_array, path_lengths_array, max_subpaths) = (
-                get_all_paths_deep(
+                deep_identify_wrapper(
                     omega_start,
                     absorbing_state,
                     omega_nonrev_counts,
@@ -946,7 +942,7 @@ def run_mc_ABC(
             omega_start = translate_to_omega(path)
 
             (keys_array, paths_array, path_lengths_array, max_subpaths) = (
-                get_all_paths_deep(
+                deep_identify_wrapper(
                     omega_start,
                     absorbing_state,
                     omega_nonrev_counts,
@@ -983,7 +979,7 @@ def run_mc_ABC(
             omega_start = translate_to_omega(path)
 
             (keys_array, paths_array, path_lengths_array, max_subpaths) = (
-                get_all_paths_deep(
+                deep_identify_wrapper(
                     omega_start,
                     absorbing_state,
                     omega_nonrev_counts,
