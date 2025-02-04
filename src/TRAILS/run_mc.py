@@ -1,82 +1,31 @@
-from os import path
+import pickle
+
 import numpy as np
+import ray
+from deep_identify import get_all_paths_deep
+from deepest_ti import deepest_ti
 from expm import expm
-from combine_omegas import combine_by_omega
+from helper_omegas import translate_to_omega
+from remove_absorbing import remove_absorbing_indices
 from vanloan import vanloan_general
 from vanloan_identify import vanloan_identify_wrapper
-from deep_identify import get_all_paths_deep
-from remove_absorbing import remove_absorbing_indices
-from deepest_ti import deepest_ti
-import numba as nb
-from numba.typed import Dict
-import pickle
-from numba.types import Tuple, int64, float64, boolean, UniTuple
-from numba import objmode, typeof
-import ray
 
 ray.init()
 
-
-@nb.jit(nopython=True)
-def translate_to_omega(key):
-    left = key[0]
-    right = key[1]
-    if left[0] == -1:
-        if left[1] == left[2] and left[1] != -1:
-            l_omega = 7
-        else:
-            l_omega = 0
-    elif left[0] == 0:
-        if left[2] != -1:
-            l_omega = 7
-        elif left[2] == -1:
-            l_omega = 3
-    elif left[0] == 1:
-        if left[2] != -1:
-            l_omega = 7
-        elif left[2] == -1:
-            l_omega = 3
-    elif left[0] == 2:
-
-        if left[2] != -1:
-            l_omega = 7
-        elif left[2] == -1:
-            l_omega = 5
-    elif left[0] == 3:
-        if left[2] != -1:
-            l_omega = 7
-        elif left[2] == -1:
-            l_omega = 5
-    if right[0] == -1:
-        if right[1] == right[2] and right[1] != -1:
-            r_omega = 7
-        else:
-            r_omega = 0
-    elif right[0] == 0:
-        if right[2] != -1:
-            r_omega = 7
-        elif right[2] == -1:
-            r_omega = 3
-    elif right[0] == 1:
-        if right[2] != -1:
-            r_omega = 7
-        elif right[2] == -1:
-            r_omega = 3
-    elif right[0] == 2:
-        if right[2] != -1:
-            r_omega = 7
-        elif right[2] == -1:
-            r_omega = 5
-    elif right[0] == 3:
-        if right[2] != -1:
-            r_omega = 7
-        elif right[2] == -1:
-            r_omega = 6
-    return (l_omega, r_omega)
-
-
 @ray.remote
 def compute_matrix_end(prob_mat, exponential_time, omega_end_mask):
+    """
+    Helper function that computes the first matrix multiplication, then slices the matrix to get the columns corresponding to the end state.
+
+    :param prob_mat: Matrix of probabilities
+    :type prob_mat: Numpy array
+    :param exponential_time: Exponential matrix of transition matrix multiplied by time.
+    :type exponential_time: Numpy array
+    :param omega_end_mask: Vector of booleans that masks the columns of the matrix.
+    :type omega_end_mask: Numpy array of booleans.
+    :return: Sliced matrix
+    :rtype: Numpy array
+    """
     mat_mult_result = prob_mat @ exponential_time
     result = mat_mult_result * omega_end_mask
     return result
@@ -86,15 +35,43 @@ def compute_matrix_end(prob_mat, exponential_time, omega_end_mask):
 def compute_matrix_start_end(
     prob_mat, exponential_time, omega_start_mask, omega_end_mask
 ):
+    """
+    Helper function that computes all matrix multiplications but the first, then slices the matrix to get the rows corresponding to the starting state and columns corresponding to the end state.
+
+    :param prob_mat: Matrix of probabilities
+    :type prob_mat: Numpy array
+    :param exponential_time: Exponential matrix of transition matrix multiplied by time.
+    :type exponential_time: Numpy array
+    :param omega_start_mask: Vector of booleans that masks the rows of the matrix.
+    :type omega_start_mask: Numpy array of booleans.
+    :param omega_end_mask: Vector of booleans that masks the columns of the matrix.
+    :type omega_end_mask: Numpy array of booleans.
+    :return: Sliced matrix
+    :rtype: Numpy array
+    """
     sliced_mat = (omega_start_mask) @ (exponential_time) @ (omega_end_mask)
 
     result = (prob_mat) @ (sliced_mat)
     return result
 
 
-def compute_matrices_end_15(
+def compute_matrices_end(
     prob_mats, exponential_time, omega_end_masks, num_combinations
 ):
+    """
+    Wrapper that parallelizes the computation of all the possibilities within the first step.
+
+    :param prob_mats: 3D array of probabilities, number in the first dimension is the number of combinations and contains a 2D array of probabilities.
+    :type prob_mats: Numpy array
+    :param exponential_time: Exponential matrix of transition matrix multiplied by time.
+    :type exponential_time: Numpy array
+    :param omega_end_masks: 3D array to mask the matrix based on final omega, number in the first dimension is the number of combinations and contains a 2D array of booleans.
+    :type omega_end_masks: Numpy array
+    :param num_combinations: Total number of operations.
+    :type num_combinations: int
+    :return: Array of results
+    :rtype: Numpy array
+    """
     results = []
     for i in range(num_combinations):
         result = compute_matrix_end.remote(
@@ -105,9 +82,25 @@ def compute_matrices_end_15(
     return np.array(results)
 
 
-def compute_matrices_start_end_15(
+def compute_matrices_start_end(
     prob_mats, exponential_time, omega_start_masks, omega_end_masks, num_combinations
 ):
+    """
+    Wrapper that parallelizes the computation of all the possibilities after the first step.
+
+    :param prob_mats: 3D array of probabilities, number in the first dimension is the number of combinations and contains a 2D array of probabilities.
+    :type prob_mats: Numpy array
+    :param exponential_time: Exponential matrix of transition matrix multiplied by time.
+    :type exponential_time: Numpy array
+    :param omega_start_masks: 3D array to mask the matrix based on initial omega, number in the first dimension is the number of combinations and contains a 2D array of booleans.
+    :type omega_start_masks: Numpy array
+    :param omega_end_masks: 3D array to mask the matrix based on final omega, number in the first dimension is the number of combinations and contains a 2D array of booleans.
+    :type omega_end_masks: Numpy array
+    :param num_combinations: Total number of operations.
+    :type num_combinations: int
+    :return: Array of results
+    :rtype: Numpy array
+    """
     results = []
     for i in range(num_combinations):
         result = compute_matrix_start_end.remote(
@@ -118,25 +111,13 @@ def compute_matrices_start_end_15(
     return np.array(results)
 
 
-def compute_matrices_start_end_203(
-    prob_mats, exponential_times, omega_start_masks, omega_end_masks, num_combinations
-):
-    results = []
-    for i in range(num_combinations):
-        result = compute_matrix_start_end.remote(
-            prob_mats[i], exponential_times[i], omega_start_masks[i], omega_end_masks[i]
-        )
-        results.append(result)
-    results = ray.get(results)
-    return np.array(results)
-
 
 @ray.remote
 def vanloan_worker_inner(
     idx_i,
     idx_j,
     trans_mat,
-    omega_dict_serialized,  # Serialized dictionary
+    omega_dict_serialized,
     key,
     time,
     paths_array_j,
@@ -144,7 +125,32 @@ def vanloan_worker_inner(
     omega_end_mask,
     prob_mat,
 ):
-    """Ray worker function for a single (i, j) pair."""
+    """
+    Ray worker function for every combination of subpaths when multiple coalescents happen in a same time interval (Van Loan).
+
+    :param idx_i: Marker of the path index within all possible Van Loan paths.
+    :type idx_i: int
+    :param idx_j: Marker of the subpath index within all possible subpaths.
+    :type idx_j: int
+    :param trans_mat: Transition matrix.
+    :type trans_mat: Numpy array
+    :param omega_dict_serialized: Serialized dictionary of omega indices (key) and vector of booleans where each key has the states (value).
+    :type omega_dict_serialized: Serialized dictionary
+    :param key: Key that represents the current state.
+    :type key: Numpy array
+    :param time: End time of the interval.
+    :type time: float
+    :param paths_array_j: Array of possible transitions within a subpath.
+    :type paths_array_j: Numpy array
+    :param omega_start_mask: 2D array to mask the matrix based on initial omega, array of booleans.
+    :type omega_start_mask: Numpy array
+    :param omega_end_mask: 2D array to mask the matrix based on final omega, array of booleans.
+    :type omega_end_mask: Numpy array
+    :param prob_mat: Array of probabilities for each state at the start of the time interval.
+    :type prob_mat: Numpy array
+    :return: I and J indices, Probability matrix summed over every possible transitions for a subpath, Updated Key.
+    :rtype: Tuple(int, int, Numpy array, Numpy array)
+    """
     # Deserialize omega_dict
     omega_dict = pickle.loads(omega_dict_serialized)
 
@@ -175,10 +181,34 @@ def vanloan_parallel_inner(
     vl_omega_masks_end,
     vl_prob_mats,
 ):
+    """
+    Wrapper function that parallelizes the computation of all the possibilities where multiple coalescents happen in a same time interval starting from a certain state (Van Loan).
+
+    :param vl_idx: Total number of cases to parallelize.
+    :type vl_idx: int
+    :param time: End time of the interval.
+    :type time: float
+    :param trans_mat: Transition matrix.
+    :type trans_mat: Numpy array
+    :param omega_dict: Dictionary of omega indices (key) and vector of booleans where each key has the states (value).
+    :type omega_dict: Numba typed dictionary
+    :param vl_keys_acc_array: Array that accumulates, in each index of the first dimension, the collection of keys for each case.
+    :type vl_keys_acc_array: Numpy array
+    :param vl_paths_acc_array: Array that accumulates, in each index of the first dimension, the collection of paths for each case.
+    :type vl_paths_acc_array: Numpy array
+    :param vl_omega_masks_start: 3D array to mask the matrix based on initial omega, number in the first dimension is each case and contains a 2D array of booleans.
+    :type vl_omega_masks_start: Numpy array
+    :param vl_omega_masks_end: 3D array to mask the matrix based on final omega, number in the first dimension is each case and contains a 2D array of booleans.
+    :type vl_omega_masks_end: Numpy array
+    :param vl_prob_mats: Array of starting probabilities for each case at the start of the time interval.
+    :type vl_prob_mats: Numpy array
+    :return: Array of keys, Array of probability matrices summed over every possible transitions for a subpath, Total number of valid cases.
+    :rtype: Tuple(Numpy array, Numpy array, int)
+    """
     omega_dict_python = dict(omega_dict)
 
     omega_dict_serialized = pickle.dumps(omega_dict_python)
-    """Parallelize inner valid_length loop using Ray."""
+
     # Initialize Ray
     if not ray.is_initialized():
         ray.init()
@@ -235,7 +265,26 @@ def deepest_worker_inner(
     acc_prob_mat_noabs,
     path_lengths_j,
 ):
-    """Ray worker function for a single (i, j) pair."""
+    """
+    Ray worker function for every combination of subpaths when multiple coalescents happen in the last time interval (Deepest TI).
+
+    :param idx_i: Marker of the path index within all possible Deepest TI paths.
+    :type idx_i: int
+    :param idx_j: Marker of the subpath index within all possible subpaths.
+    :type idx_j: int
+    :param trans_mat_noabs: Transition matrix without absorbing states.
+    :type trans_mat_noabs: Numpy array
+    :param omega_dict_noabs_serialized: Serialized dictionary of omega indices (key) and vector of booleans where each key has the states (value), lacks absorbing states.
+    :type omega_dict_noabs_serialized: Serialized dictionary
+    :param paths_array_j: Array of possible transitions within a subpath.
+    :type paths_array_j: Numpy array
+    :param acc_prob_mat_noabs: Array of probabilities for each state at the start of the time interval without absorbing states.
+    :type acc_prob_mat_noabs: Numpy array
+    :param path_lengths_j: Array of lengths of each subpath.
+    :type path_lengths_j: Numpy array
+    :return: I and J indices, Probability matrix summed over every possible transitions for a subpath, Updated Key.
+    :rtype: Tuple(int, int, Numpy array, Numpy array)
+    """
     # Deserialize omega_dict
     omega_dict_noabs = pickle.loads(omega_dict_noabs_serialized)
 
@@ -263,10 +312,30 @@ def deepest_parallel_inner(
     deepest_path_lengths_array,
     acc_prob_mats_noabs,
 ):
+    """
+    Wrapper function that parallelizes the computation of all the possibilities where multiple coalescents happen in the last time interval (Deepest TI).
+
+    :param deepest_idx: Total number of cases to parallelize.
+    :type deepest_idx: int
+    :param trans_mat_noabs: Transition matrix without absorbing states.
+    :type trans_mat_noabs: Numpy array
+    :param omega_dict_noabs: Dictionary of omega indices (key) and vector of booleans where each key has the states (value), lacks absorbing states.
+    :type omega_dict_noabs: Numba typed dictionary
+    :param deepest_keys_acc_array: Array that accumulates, in each index of the first dimension, the collection of keys for each case.
+    :type deepest_keys_acc_array: Numpy array
+    :param deepest_paths_acc_array: Array that accumulates, in each index of the first dimension, the collection of paths for each case.
+    :type deepest_paths_acc_array: Numpy array
+    :param deepest_path_lengths_array: Array that accumulates, in each index of the first dimension, the lengths of each path for each case.
+    :type deepest_path_lengths_array: Numpy array
+    :param acc_prob_mats_noabs: Array of starting probabilities for each case at the start of the time interval without absorbing states.
+    :type acc_prob_mats_noabs: Numpy array
+    :return: Array of keys, Array of probability matrices summed over every possible transitions for a subpath, Total number of valid cases.
+    :rtype: Tuple(Numpy array, Numpy array, int)
+    """
     omega_dict_python = dict(omega_dict_noabs)
 
     omega_dict_noabs_serialized = pickle.dumps(omega_dict_python)
-    """Parallelize inner valid_length loop using Ray."""
+    
     # Initialize Ray
     if not ray.is_initialized():
         ray.init()
@@ -314,9 +383,23 @@ def run_mc_AB(
     prob_dict,
     n_int_AB,
 ):
+    """
+    Function that runs the Discrete Time Markov chain for species A and B.
 
+    :param trans_mat: Transition matrix.
+    :type trans_mat: Numpy array
+    :param times: Array of cut times.
+    :type times: Numpy array
+    :param omega_dict: Dictionary of omega indices (key) and vector of booleans where each key has the states (value).
+    :type omega_dict: Numba typed dictionary
+    :param prob_dict: Dictionary of each path (keys) and probabilities for each state at the start of the first time interval (values).
+    :type prob_dict: Numba typed dictionary
+    :param n_int_AB: Number of intervals for species A and B.
+    :type n_int_AB: int
+    :return: Updated dictionary of each path (keys) and probabilities for each state at the end of the last time interval (values).
+    :rtype: Numba typed dictionary
+    """
     step = 0
-
     exponential_time_0 = expm(trans_mat * times[step])
     exponential_time_0 = exponential_time_0.copy()
     og_keys = list(prob_dict.keys())
@@ -363,7 +446,7 @@ def run_mc_AB(
                     keys[result_idx] = np.ascontiguousarray(new_row)
                     result_idx += 1
 
-        results = compute_matrices_end_15(
+        results = compute_matrices_end(
             prob_mats, exponential_time_0, omega_masks_end, result_idx
         )
 
@@ -438,7 +521,7 @@ def run_mc_AB(
                         keys[result_idx] = np.ascontiguousarray(new_row)
                         result_idx += 1
 
-            results = compute_matrices_start_end_15(
+            results = compute_matrices_start_end(
                 prob_mats,
                 exponential_time,
                 omega_masks_start,
@@ -473,10 +556,33 @@ def run_mc_ABC(
     species,
     absorbing_state=(7, 7),
 ):
+    """
+    Function that runs the Discrete Time Markov chain for species A, B, and C.
+
+    :param trans_mat: Transition matrix.
+    :type trans_mat: Numpy array
+    :param times: Array of cut times, last timepoint is infinity.
+    :type times: Numpy array
+    :param omega_dict: Dictionary of omega indices (key) and vector of booleans where each key has the states (value).
+    :type omega_dict: Numba typed dictionary
+    :param prob_dict: Dictionary of each path (keys) and probabilities for each state at the start of the first time interval (values).
+    :type prob_dict: Numba typed dictionary
+    :param omega_nonrev_counts: Dictionary of omega indices (key) and number of non-reversible transitions (value).
+    :type omega_nonrev_counts: Numba typed dictionary
+    :param inverted_omega_nonrev_counts: Dictionary of omega indices (key) and number of non-reversible transitions (value), inverted.
+    :type inverted_omega_nonrev_counts: Numba typed dictionary
+    :param n_int_ABC: Number of intervals for species A, B, and C.
+    :type n_int_ABC: int
+    :param species: Number of species.
+    :type species: int
+    :param absorbing_state: State where all coalecents have happened, defaults to (7, 7)
+    :type absorbing_state: tuple, optional
+    :return: Updated dictionary of each path (keys) and probabilities for each state at the end of the Markov chain (time equals inf)(values).
+    :rtype: Numba typed dictionary
+    """
 
     for step in range(n_int_ABC - 1):
         exponential_time = expm(trans_mat * times[step])
-        exponential_time = exponential_time.copy()
         og_keys = list(prob_dict.keys())
         for path in og_keys:
             prob_mats = np.zeros((324, 1, 203), dtype=np.float64)
@@ -485,7 +591,6 @@ def run_mc_ABC(
             omega_masks_end = np.zeros((324, 203, 203), dtype=np.float64)
             vl_omega_masks_start = np.zeros((324, 203, 203), dtype=np.float64)
             vl_omega_masks_end = np.zeros((324, 203, 203), dtype=np.float64)
-            exponential_times = np.zeros((324, 203, 203), dtype=np.float64)
             keys = np.zeros((324, 6), dtype=np.int64)
             vl_keys_acc_array = np.zeros((324, 9, 7), dtype=np.int64)
             vl_paths_acc_array = np.zeros((324, 9, 15, 16, 2), dtype=np.int64)
@@ -603,7 +708,6 @@ def run_mc_ABC(
                             omega_masks_start[result_idx] = np.diag(omega_start_mask)
                             omega_masks_end[result_idx] = np.diag(omega_end_mask)
                             keys[result_idx] = new_row
-                            exponential_times[result_idx] = exponential_time
                             result_idx += 1
 
             flattened_keys, flattened_results, total_valid = vanloan_parallel_inner(
@@ -618,9 +722,9 @@ def run_mc_ABC(
                 vl_prob_mats,
             )
 
-            results_novl = compute_matrices_start_end_203(
+            results_novl = compute_matrices_start_end(
                 prob_mats,
-                exponential_times,
+                exponential_time,
                 omega_masks_start,
                 omega_masks_end,
                 result_idx,
@@ -652,7 +756,7 @@ def run_mc_ABC(
                     )
                 ] = flattened_results[i]
     og_keys = list(prob_dict.keys())
-    noabs_mask = omega_dict[absorbing_state] == False
+    noabs_mask = not omega_dict[absorbing_state]
     trans_mat_noabs = trans_mat[noabs_mask][:, noabs_mask]
     omega_dict_noabs = remove_absorbing_indices(
         omega_dict=omega_dict, absorbing_key=absorbing_state, species=species
@@ -678,7 +782,6 @@ def run_mc_ABC(
             and r_path[2] == -1
             and all(x != -1 for x in r_path[:2])
         ):
-            # Replace path by changing -1 to `n_int_ABC - 1`
             new_key = (l_path, (r_path[0], r_path[1], n_int_ABC - 1))
             prob_dict_sum[new_key] = np.sum(prob_dict[path])
             prob_dict[new_key] = prob_dict.pop(path)
@@ -727,7 +830,6 @@ def run_mc_ABC(
             and all(x != -1 for x in l_path[:2])
             and all(x != -1 for x in r_path)
         ):
-            # Replace path by changing -1 to `n_int_ABC - 1`
             new_key = ((l_path[0], l_path[1], n_int_ABC - 1), r_path)
             prob_dict_sum[new_key] = np.sum(prob_dict[path])
             prob_dict[new_key] = prob_dict.pop(path)
@@ -740,7 +842,6 @@ def run_mc_ABC(
             and r_path[2] == -1
             and all(x != -1 for x in r_path[:2])
         ):
-            # Replace path by changing -1 to `n_int_ABC - 1`
             new_key = (
                 (l_path[0], l_path[1], n_int_ABC - 1),
                 (r_path[0], r_path[1], n_int_ABC - 1),
