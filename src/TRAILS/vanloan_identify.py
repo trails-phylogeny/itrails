@@ -1,8 +1,6 @@
-import numba as nb
 import numpy as np
 
 
-@nb.jit(nopython=True)
 def vanloan_identify(
     current,
     omega_fin,
@@ -29,47 +27,47 @@ def vanloan_identify(
     """
     Recursive function that identifies, in each iteration, the possible paths that can be taken from the current state to the final state. The function is called recursively until the final state is reached. The function stores the paths in the paths_array and all_paths_array arrays.
 
-    :param current: _description_
-    :type current: _type_
-    :param omega_fin: _description_
-    :type omega_fin: _type_
-    :param omega_nonrev_counts: _description_
-    :type omega_nonrev_counts: _type_
-    :param inverted_omega_nonrev_counts: _description_
-    :type inverted_omega_nonrev_counts: _type_
-    :param path: _description_
-    :type path: _type_
-    :param depth: _description_
-    :type depth: _type_
-    :param key_indices: _description_
-    :type key_indices: _type_
-    :param key_array: _description_
-    :type key_array: _type_
-    :param paths_array: _description_
-    :type paths_array: _type_
-    :param subpath_counts: _description_
-    :type subpath_counts: _type_
-    :param num_keys_array: _description_
-    :type num_keys_array: _type_
-    :param max_num_keys: _description_
-    :type max_num_keys: _type_
-    :param max_num_subpaths_per_key: _description_
-    :type max_num_subpaths_per_key: _type_
-    :param max_path_length: _description_
-    :type max_path_length: _type_
-    :param all_paths_array: _description_
-    :type all_paths_array: _type_
-    :param path_lengths: _description_
-    :type path_lengths: _type_
-    :param path_key_indices: _description_
-    :type path_key_indices: _type_
-    :param total_subpaths_array: _description_
-    :type total_subpaths_array: _type_
-    :param max_total_subpaths: _description_
-    :type max_total_subpaths: _type_
-    :param by_l: _description_, defaults to -1
+    :param current: Current omega state in the recursion
+    :type current: Tuple of int
+    :param omega_fin: Omega state to reach
+    :type omega_fin: Tuple of int
+    :param omega_nonrev_counts: Dictionary containing the number of non-reversible coalescents (value) for each omega state (key)
+    :type omega_nonrev_counts: Numba typed Dict
+    :param inverted_omega_nonrev_counts: Dictionary containing the omega states (value) for each number of non-reversible coalescents (key)
+    :type inverted_omega_nonrev_counts: Numba typed Dict
+    :param path: Current path in the recursion
+    :type path: Numpy array
+    :param depth: Current depth in the recursion
+    :type depth: int
+    :param key_indices: Helper array to store the indices of the omega subpath being taken
+    :type key_indices: Numpy array
+    :param key_array: Array to store current omega state of each step
+    :type key_array: Numpy array
+    :param paths_array: Arary storing every subpath taken
+    :type paths_array: Numpy array
+    :param subpath_counts: Array storing the number of subpaths taken for each complete path
+    :type subpath_counts: Numpy array
+    :param num_keys_array: Array storing the number of keys
+    :type num_keys_array: Numpy array
+    :param max_num_keys: Upper limit for the number of keys
+    :type max_num_keys: int
+    :param max_num_subpaths_per_key: Upper limit for the number of subpaths per key
+    :type max_num_subpaths_per_key: int
+    :param max_path_length: Upper limit for the path length
+    :type max_path_length: int
+    :param all_paths_array: Array storing all possible subpaths
+    :type all_paths_array: Numpy array
+    :param path_lengths: Array storing the length of each path
+    :type path_lengths: Numpy array
+    :param path_key_indices: Array storing the key index for each path
+    :type path_key_indices: Numpy array
+    :param total_subpaths_array: Array storing the total number of subpaths
+    :type total_subpaths_array: Numpy array
+    :param max_total_subpaths: Upper limit for the total number of subpaths
+    :type max_total_subpaths: int
+    :param by_l: Current omega left subpath, defaults to -1 (initial placeholder value)
     :type by_l: int, optional
-    :param by_r: _description_, defaults to -1
+    :param by_r: Current omega right subpath, defaults to -1 (initial placeholder value)
     :type by_r: int, optional
     """
     if current[0] == omega_fin[0] and current[1] == omega_fin[1]:
@@ -250,7 +248,6 @@ def vanloan_identify(
                     )
 
 
-@nb.jit(nopython=True)
 def vanloan_identify_wrapper(
     omega_init,
     omega_fin,
@@ -265,6 +262,36 @@ def vanloan_identify_wrapper(
     max_path_length,
     max_total_subpaths,
 ):
+    """
+    Wrapper function for the vanloan_identify function. This function initializes the arrays and dictionaries needed for the recursion and calls the vanloan_identify function. In the end it returns the transformed keys and the paths.
+
+    :param omega_init: Initial omega state
+    :type omega_init: Tuple of int
+    :param omega_fin: End omega state
+    :type omega_fin: Tuple of int
+    :param omega_nonrev_counts: Dictionary containing the number of non-reversible coalescents (value) for each omega state (key)
+    :type omega_nonrev_counts: Numba typed Dict
+    :param inverted_omega_nonrev_counts: Dictionary containing the omega states (value) for each number of non-reversible coalescents (key)
+    :type inverted_omega_nonrev_counts: Numba typed Dict
+    :param l_tuple: Tuple containing the left omega state
+    :type l_tuple: Numba typed Tuple
+    :param r_tuple: Tuple containing the right omega state
+    :type r_tuple: Numba typed Tuple
+    :param l_row: Resulting left state
+    :type l_row: Tuple of int
+    :param r_row: Resulting right state
+    :type r_row: Tuple of int
+    :param max_num_keys: Upper limit for the number of keys
+    :type max_num_keys: int
+    :param max_num_subpaths_per_key: Upper limit for the number of subpaths per key
+    :type max_num_subpaths_per_key: int
+    :param max_path_length: Upper limit for the path length
+    :type max_path_length: int
+    :param max_total_subpaths: Upper limit for the total number of subpaths
+    :type max_total_subpaths: int
+    :return: Resulting keys and paths
+    :rtype: Numpy arrays
+    """
     key_indices = np.full((max_num_keys, 2), -1, dtype=np.int64)
     key_array = np.zeros((max_num_keys, 3), dtype=np.int64)
     paths_array = np.zeros(
