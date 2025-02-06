@@ -2,6 +2,7 @@ import pickle
 
 import numpy as np
 import ray
+
 from deepest_ti import deep_identify_wrapper, deepest_ti
 from expm import expm
 from helper_omegas import remove_absorbing_indices, translate_to_omega
@@ -752,7 +753,7 @@ def run_markov_chain_ABC(
                     )
                 ] = flattened_results[i]
     og_keys = list(prob_dict.keys())
-    noabs_mask = not omega_dict[absorbing_state]
+    noabs_mask = np.logical_not(omega_dict[absorbing_state])
     trans_mat_noabs = trans_mat[noabs_mask][:, noabs_mask]
     omega_dict_noabs = remove_absorbing_indices(
         omega_dict=omega_dict, absorbing_key=absorbing_state, species=species

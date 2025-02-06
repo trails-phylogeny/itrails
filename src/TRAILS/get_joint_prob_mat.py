@@ -173,7 +173,7 @@ print("Precomputing done!")
 print(f"Time precomputing: {time1 - time0}")
 
 time0 = time.time()
-get_joint_prob_mat(
+final_ABC = get_joint_prob_mat(
     t_A=10,
     t_B=10,
     t_AB=20,
