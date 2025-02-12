@@ -1,5 +1,4 @@
 # Packages
-import time
 
 import numba as nb
 import numpy as np
@@ -136,11 +135,15 @@ def get_joint_prob_mat(
         species=3,
         absorbing_state=(7, 7),
     )
+    prob = 0
+    for path, value in final_ABC.items():
+        prob += value
 
+    print(prob)
     return final_ABC
 
 
-time0 = time.time()
+""" 
 final_ABC = get_joint_prob_mat(
     t_A=10,
     t_B=10,
@@ -161,7 +164,7 @@ final_ABC = get_joint_prob_mat(
     cut_ABC="standard",
     n_int_ABC=3,
 )
-time1 = time.time()
+
 
 prob = 0
 for path, value in final_ABC.items():
@@ -170,9 +173,8 @@ for path, value in final_ABC.items():
 
 print(prob)
 print("Precomputing done!")
-print(f"Time precomputing: {time1 - time0}")
 
-time0 = time.time()
+
 final_ABC = get_joint_prob_mat(
     t_A=10,
     t_B=10,
@@ -193,11 +195,11 @@ final_ABC = get_joint_prob_mat(
     cut_ABC="standard",
     n_int_ABC=3,
 )
-time1 = time.time()
+
 prob = 0
 for path, value in final_ABC.items():
     print(path, value)
     prob += value
 
 print(prob)
-print(f"Time after precomputing: {time1 - time0}")
+ """

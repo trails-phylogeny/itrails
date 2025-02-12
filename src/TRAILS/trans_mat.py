@@ -1,6 +1,7 @@
-import numpy as np
-import numba as nb
 import itertools as it
+
+import numba as nb
+import numpy as np
 
 
 @nb.jit(nopython=True)
@@ -364,7 +365,9 @@ def number_array_1(
         state_dict[state_tuple] = i
 
         if (l_omega, r_omega) not in omega_dict:
-            omega_dict[(l_omega, r_omega)] = np.zeros(total_states, dtype=nb.types.boolean)
+            omega_dict[(l_omega, r_omega)] = np.zeros(
+                total_states, dtype=nb.types.boolean
+            )
             omega_dict[(l_omega, r_omega)][i] = True
         else:
             omega_dict[(l_omega, r_omega)][i] = True
@@ -377,7 +380,9 @@ def number_array_2(
     species,
     mss,
     tuple_omegas=nb.types.Tuple((nb.types.int64, nb.types.int64)),
-    tuple_states=nb.types.Tuple((nb.types.int64, nb.types.int64, nb.types.int64, nb.types.int64)),
+    tuple_states=nb.types.Tuple(
+        (nb.types.int64, nb.types.int64, nb.types.int64, nb.types.int64)
+    ),
 ):
     """
     Function that, for the 2 species CTMC, generates two dictionaries.
@@ -475,7 +480,9 @@ def number_array_2(
         state_dict[state_tuple] = i
 
         if (l_omega, r_omega) not in omega_dict:
-            omega_dict[(l_omega, r_omega)] = np.zeros(total_states, dtype=nb.types.boolean)
+            omega_dict[(l_omega, r_omega)] = np.zeros(
+                total_states, dtype=nb.types.boolean
+            )
             omega_dict[(l_omega, r_omega)][i] = True
         else:
             omega_dict[(l_omega, r_omega)][i] = True
@@ -489,7 +496,16 @@ def number_array_3(
     species,
     mss,
     tuple_omegas=nb.types.Tuple((nb.types.int64, nb.types.int64)),
-    tuple_states=nb.types.Tuple((nb.types.int64, nb.types.int64, nb.types.int64, nb.types.int64, nb.types.int64, nb.types.int64)),
+    tuple_states=nb.types.Tuple(
+        (
+            nb.types.int64,
+            nb.types.int64,
+            nb.types.int64,
+            nb.types.int64,
+            nb.types.int64,
+            nb.types.int64,
+        )
+    ),
 ):
     """
     Function that, for the 3 species CTMC, generates two dictionaries.
@@ -587,7 +603,9 @@ def number_array_3(
         state_dict[state_tuple] = i
 
         if (l_omega, r_omega) not in omega_dict:
-            omega_dict[(l_omega, r_omega)] = np.zeros(total_states, dtype=nb.types.boolean)
+            omega_dict[(l_omega, r_omega)] = np.zeros(
+                total_states, dtype=nb.types.boolean
+            )
             omega_dict[(l_omega, r_omega)][i] = True
         else:
             omega_dict[(l_omega, r_omega)][i] = True
