@@ -52,7 +52,7 @@ dct2 = {"n_int_AB": n_int_AB, "n_int_ABC": n_int_ABC}
 sp_lst = ["Gorilla", "Human", "Chimp", "Out_Orangutan"]
 # Read MAF alignment
 alignment = maf_parser(
-    "/faststorage/project/GenerationInterval/people/dmartinpestana/data/chr1.filtered.region.maf",
+    "/data/chr1.filtered.region.maf",
     sp_lst,
 )
 
