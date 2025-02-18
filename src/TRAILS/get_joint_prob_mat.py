@@ -135,11 +135,6 @@ def get_joint_prob_mat(
         species=3,
         absorbing_state=(7, 7),
     )
-    prob = 0
-    for path, value in final_ABC.items():
-        prob += value
-
-    print(prob)
     return final_ABC
 
 
