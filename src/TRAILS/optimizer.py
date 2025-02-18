@@ -3,7 +3,6 @@ import os
 import time
 
 import numpy as np
-import pandas as pd
 from cutpoints import cutpoints_ABC
 from get_emission_prob_mat import (
     get_emission_prob_mat,
@@ -465,15 +464,13 @@ def trans_emiss_calc(
         to_idx = state_to_index[to_state]
         transition_matrix[from_idx, to_idx] = prob
 
-    pi = transition_matrix.sum(axis=1, keepdims=True)
+    pi = transition_matrix.sum(axis=1)
 
     # Avoid division by zero
     a = np.divide(transition_matrix, pi, where=pi != 0)
 
-    print(pi, flush=True)
-    print(a, flush=True)
-
-    em = get_emission_prob_mat(
+    # Get emissions using the modified function (which now returns lists)
+    hidden_states, emission_dicts = get_emission_prob_mat(
         t_A,
         t_B,
         t_AB,
@@ -501,13 +498,15 @@ def trans_emiss_calc(
         cut_AB,
         cut_ABC,
     )
-    em.hidden_state = em.hidden_state.astype("category")
-    em.hidden_state.cat.set_categories(hidden_names)
-    em = em.sort_values(["hidden_state"])
-    em = em.iloc[:, 1:]
-    observed_names = list(em.columns)
-    observed_names = dict(zip(range(len(observed_names)), observed_names))
-    b = np.array(em)
+    # Sort emissions by hidden state (assuming hidden_states can be compared)
+    sorted_data = sorted(zip(hidden_states, emission_dicts), key=lambda x: x[0])
+    sorted_states, sorted_emissions = zip(*sorted_data)
+    hidden_names = {i: state for i, state in enumerate(sorted_states)}
+    # Assume all emission dictionaries have the same keys.
+    observed_keys = sorted(list(sorted_emissions[0].keys()))
+    observed_names = {i: key for i, key in enumerate(observed_keys)}
+    # Build emission matrix 'b': each row corresponds to a hidden state and columns follow the order in observed_keys.
+    b = np.array([[em[key] for key in observed_keys] for em in sorted_emissions])
 
     return a, b, pi, hidden_names, observed_names
 
@@ -549,16 +548,16 @@ def optimization_wrapper(arg_lst, d, V_lst, res_name, info):
         info["tmp_path"],
     )
     # Save indices for hidden and observed states
-    if info["Nfeval"] == 0:
-        pd.DataFrame(
-            {"idx": list(hidden_names.keys()), "hidden": list(hidden_names.values())}
-        ).to_csv("hidden_states.csv", index=False)
-        pd.DataFrame(
-            {
-                "idx": list(observed_names.keys()),
-                "observed": list(observed_names.values()),
-            }
-        ).to_csv("observed_states.csv", index=False)
+    # if info["Nfeval"] == 0:
+    #    pd.DataFrame(
+    #        {"idx": list(hidden_names.keys()), "hidden": list(hidden_names.values())}
+    #    ).to_csv("hidden_states.csv", index=False)
+    #    pd.DataFrame(
+    #        {
+    #            "idx": list(observed_names.keys()),
+    #            "observed": list(observed_names.values()),
+    #        }
+    #    ).to_csv("observed_states.csv", index=False)
     try:
         ncpus = int(os.environ["SLURM_JOB_CPUS_PER_NODE"])
     except KeyError:
