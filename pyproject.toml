@@ -9,8 +9,11 @@ description = "Tree reconstruction of ancestry using incomplete lineage sorting"
 readme = "README.md"
 license = {file = "LICENSE"}
 authors = [
-    {name = "Iker Rivas-González", email = "iker_rivas_gonzalez@eva.mpg.de"},
+    
     {name = "David Martin-Pestana", email = "dmape@birc.au.dk"}
+]
+maintainers = [
+    {name = "Iker Rivas-González", email = "iker_rivas_gonzalez@eva.mpg.de"}
 ]
 requires-python = ">=3.6"
 dependencies = [
