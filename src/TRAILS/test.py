@@ -49,10 +49,10 @@ dct = {
 dct2 = {"n_int_AB": n_int_AB, "n_int_ABC": n_int_ABC}
 
 # Define list of species
-sp_lst = ["Gorilla", "Human", "Chimp", "Out_Orangutan"]
+sp_lst = ["hg38", "panTro5", "gorGor5", "ponAbe2"]
 # Read MAF alignment
 alignment = maf_parser(
-    "/data/chr1.filtered.region.maf",
+    "/faststorage/project/GenerationInterval/people/dmartinpestana/data/chr1.filtered.region.maf",
     sp_lst,
 )
 
