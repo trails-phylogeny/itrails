@@ -13,7 +13,8 @@ authors = [
     {name = "David Martin-Pestana", email = "dmape@birc.au.dk"}
 ]
 maintainers = [
-    {name = "Iker Rivas-González", email = "iker_rivas_gonzalez@eva.mpg.de"}
+    {name = "Iker Rivas-González", email = "iker_rivas_gonzalez@eva.mpg.de"},
+    {name = "David Martin-Pestana", email = "dmape@birc.au.dk"}
 ]
 requires-python = ">=3.6"
 dependencies = [
