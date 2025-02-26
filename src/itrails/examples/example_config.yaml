@@ -4,10 +4,11 @@ fixed_parameters:
   n_int_ABC: 3
   mu: 2e-8
   method: "Nelder-Mead"
+  num_cores: 4  # Number of CPU cores to use
 
 optimized_parameters:
-  N_AB: [50000 * 2e-8, 50000 * 2e-8 / 10, 50000 * 2e-8 * 10]
-  N_ABC: [50000 * 2e-8, 50000 * 2e-8 / 10, 50000 * 2e-8 * 10]
+  N_AB: [25000 * 2 * 2e-8, 50000 * 2e-8 / 10, 50000 * 2e-8 * 10]
+  N_ABC: [25000 * 2 * 2e-8, 50000 * 2e-8 / 10, 50000 * 2e-8 * 10]
   t_A: [240000 * 2e-8, (240000 * 2e-8) / 10, (240000 * 2e-8) * 10]
   t_B: [240000 * 2e-8, (240000 * 2e-8) / 10, (240000 * 2e-8) * 10]
   t_C: [320000 * 2e-8, (320000 * 2e-8) / 10, (320000 * 2e-8) * 10]
@@ -18,4 +19,6 @@ optimized_parameters:
 species_list: ["hg38", "panTro5", "gorGor5", "ponAbe2"]
 
 input_files:
-  maf_alignment: # Path to the MAF alignment file
+  maf_alignment:  # This path will be updated dynamically
+
+output_file: "optimization_results.csv"
