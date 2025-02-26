@@ -1,0 +1,21 @@
+# Example configuration for itrails-optimize
+fixed_parameters:
+  n_int_AB: 3
+  n_int_ABC: 3
+  mu: 2e-8
+  method: "Nelder-Mead"
+
+optimized_parameters:
+  N_AB: [50000 * 2e-8, 50000 * 2e-8 / 10, 50000 * 2e-8 * 10]
+  N_ABC: [50000 * 2e-8, 50000 * 2e-8 / 10, 50000 * 2e-8 * 10]
+  t_A: [240000 * 2e-8, (240000 * 2e-8) / 10, (240000 * 2e-8) * 10]
+  t_B: [240000 * 2e-8, (240000 * 2e-8) / 10, (240000 * 2e-8) * 10]
+  t_C: [320000 * 2e-8, (320000 * 2e-8) / 10, (320000 * 2e-8) * 10]
+  t_2: [40000 * 2e-8, (40000 * 2e-8) / 10, (40000 * 2e-8) * 10]
+  t_upper: [800000 * 2e-8, (800000 * 2e-8) / 10, (800000 * 2e-8) * 10]
+  r: [1e-8 / 2e-8, (1e-8 / 2e-8) / 10, (1e-8 / 2e-8) * 10]
+
+species_list: ["hg38", "panTro5", "gorGor5", "ponAbe2"]
+
+input_files:
+  maf_alignment: # Path to the MAF alignment file

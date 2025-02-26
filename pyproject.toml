@@ -38,4 +38,4 @@ where = ["src"]
 [tool.setuptools_scm]
 
 [project.scripts]
-itrails-optimize = "TRAILS.optimize:main"
+itrails-optimize = "TRAILS.workflow_optimize:main"
