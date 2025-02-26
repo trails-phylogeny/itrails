@@ -4,7 +4,7 @@ fixed_parameters:
   n_int_ABC: 3
   mu: 2e-8
   method: "Nelder-Mead"
-  num_cores: 4  # Number of CPU cores to use
+  num_cores: 32  # Number of CPU cores to use
 
 optimized_parameters:
   N_AB: [25000 * 2 * 2e-8, 50000 * 2e-8 / 10, 50000 * 2e-8 * 10]
