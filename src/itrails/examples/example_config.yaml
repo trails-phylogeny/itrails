@@ -4,21 +4,24 @@ fixed_parameters:
   n_int_ABC: 3
   mu: 2e-8
   method: "Nelder-Mead"
-  num_cores: 32  # Number of CPU cores to use
+  num_cpu: 64
+  species_list: ["hg38", "panTro5", "gorGor5", "ponAbe2"]
 
 optimized_parameters:
-  N_AB: [25000 * 2 * 2e-8, 50000 * 2e-8 / 10, 50000 * 2e-8 * 10]
-  N_ABC: [25000 * 2 * 2e-8, 50000 * 2e-8 / 10, 50000 * 2e-8 * 10]
-  t_A: [240000 * 2e-8, (240000 * 2e-8) / 10, (240000 * 2e-8) * 10]
-  t_B: [240000 * 2e-8, (240000 * 2e-8) / 10, (240000 * 2e-8) * 10]
-  t_C: [320000 * 2e-8, (320000 * 2e-8) / 10, (320000 * 2e-8) * 10]
-  t_2: [40000 * 2e-8, (40000 * 2e-8) / 10, (40000 * 2e-8) * 10]
-  t_upper: [800000 * 2e-8, (800000 * 2e-8) / 10, (800000 * 2e-8) * 10]
-  r: [1e-8 / 2e-8, (1e-8 / 2e-8) / 10, (1e-8 / 2e-8) * 10]
+  N_AB: [25000 * 2, 50000 / 10, 50000 * 10]
+  N_ABC: [25000 * 2, 50000 / 10, 50000 * 10]
 
-species_list: ["hg38", "panTro5", "gorGor5", "ponAbe2"]
+  t_A: [240000, (240000) / 10, (240000) * 10]
+  t_B: [240000, (240000) / 10, (240000) * 10]
+  t_C: [320000, (320000) / 10, (320000) * 10]
 
-input_files:
-  maf_alignment:  # This path will be updated dynamically
+  t_2: [40000, (40000) / 10, (40000) * 10]
 
-output_file: "optimization_results.csv"
+  t_3: [800000, (800000) / 10, (800000) * 10]
+  r: [1e-8, (1e-8) / 10, (1e-8) * 10]
+
+input:
+  maf_alignment:  # Can be specified in command line
+
+output:
+  output_name: "/home/dmartinpestana/genint2_develop/TRAILS/optim1.csv"
