@@ -3,19 +3,20 @@ import os
 import time
 
 import numpy as np
-from cutpoints import cutpoints_ABC
-from get_emission_prob_mat import (
-    get_emission_prob_mat,
-)
-from get_joint_prob_mat import get_joint_prob_mat
 from numba import njit
 from numba.typed import List
 from ray.util.multiprocessing import Pool
-from read_data import (
+from scipy.optimize import minimize
+
+from itrails.cutpoints import cutpoints_ABC
+from itrails.get_emission_prob_mat import (
+    get_emission_prob_mat,
+)
+from itrails.get_joint_prob_mat import get_joint_prob_mat
+from itrails.read_data import (
     get_idx_state,
     get_idx_state_new_method,
 )
-from scipy.optimize import minimize
 
 
 def forward_loglik_par(a, b, pi, V, order):

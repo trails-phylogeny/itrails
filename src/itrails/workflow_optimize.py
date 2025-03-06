@@ -5,9 +5,10 @@ import sys
 import urllib.request
 
 import yaml
-from cutpoints import cutpoints_ABC
-from optimizer import optimizer
-from read_data import maf_parser
+
+from itrails.cutpoints import cutpoints_ABC
+from itrails.optimizer import optimizer
+from itrails.read_data import maf_parser
 
 # URL of the example MAF file on Zenodo
 EXAMPLE_MAF_URL = "https://zenodo.org/records/14930374/files/example_alignment.maf"
@@ -51,7 +52,7 @@ def main():
     parser.add_argument(
         "config_file",
         type=str,
-        help="Path to the YAML config file or 'example' to use built-in example (downloads an example MAF file into the output directory).",
+        help="Path to the YAML config file or 'example' to use built-in example.",
     )
 
     parser.add_argument(

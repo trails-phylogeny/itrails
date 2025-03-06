@@ -58,7 +58,11 @@ def deep_identify(
             new_by_l = (
                 by_l
                 if by_l != -1
-                else (left if omega_nonrev_counts[left] == 1 and start_l + 1 != end_l else -1)
+                else (
+                    left
+                    if omega_nonrev_counts[left] == 1 and start_l + 1 != end_l
+                    else -1
+                )
             )
             path.append(new_state)
             deep_identify(
@@ -81,7 +85,11 @@ def deep_identify(
             new_by_r = (
                 by_r
                 if by_r != -1
-                else (right if omega_nonrev_counts[right] == 1 and start_r + 1 != end_r else -1)
+                else (
+                    right
+                    if omega_nonrev_counts[right] == 1 and start_r + 1 != end_r
+                    else -1
+                )
             )
             path.append(new_state)
             deep_identify(
@@ -143,7 +151,6 @@ def deep_identify_wrapper(
     inverted_omega_nonrev_counts,
     path_to_convert,
 ):
-    
     """
     Wrapper function for the deep_identify function. This function initializes the arrays and dictionaries needed for the recursion and calls the deep_identify function. In the end it returns the transformed keys and the paths.
 
@@ -158,7 +165,7 @@ def deep_identify_wrapper(
     :return: Resulting keys and paths
     :rtype: Tuple(Array, Array, Array, int)
     """
-    
+
     all_paths_dict = {}
     path = [omega_init]
     deep_identify(
@@ -190,8 +197,7 @@ def deep_identify_wrapper(
     )
 
     # Initialize paths_array with zeros
-    paths_array = np.zeros(
-        (len(all_paths_dict), max_paths, max_subpaths, 2)    )
+    paths_array = np.zeros((len(all_paths_dict), max_paths, max_subpaths, 2))
 
     # Initialize path_lengths_array to store the length of each path
     path_lengths_array = np.zeros((len(all_paths_dict), max_paths))
@@ -204,7 +210,6 @@ def deep_identify_wrapper(
                 paths_array[i, j, k] = point
 
     return keys_array_final, paths_array, path_lengths_array, max_subpaths
-
 
 
 def deepest_ti(trans_mat_noabs, omega_dict_noabs, path):

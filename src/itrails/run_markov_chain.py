@@ -3,10 +3,10 @@ import pickle
 import numpy as np
 import ray
 
-from deepest_ti import deep_identify_wrapper, deepest_ti
-from expm import expm
-from helper_omegas import remove_absorbing_indices, translate_to_omega
-from vanloan import vanloan, vanloan_identify_wrapper
+from itrails.deepest_ti import deep_identify_wrapper, deepest_ti
+from itrails.expm import expm
+from itrails.helper_omegas import remove_absorbing_indices, translate_to_omega
+from itrails.vanloan import vanloan, vanloan_identify_wrapper
 
 
 @ray.remote
@@ -106,7 +106,6 @@ def compute_matrices_start_end(
         results.append(result)
     results = ray.get(results)
     return np.array(results)
-
 
 
 @ray.remote
@@ -332,7 +331,7 @@ def deepest_parallel_inner(
     omega_dict_python = dict(omega_dict_noabs)
 
     omega_dict_noabs_serialized = pickle.dumps(omega_dict_python)
-    
+
     # Initialize Ray
     if not ray.is_initialized():
         ray.init()

@@ -1,6 +1,5 @@
 import numpy as np
-from scipy.stats import truncexpon
-from scipy.stats import expon
+from scipy.stats import expon, truncexpon
 
 
 def cutpoints_AB(n_int_AB, t_AB, coal_AB):

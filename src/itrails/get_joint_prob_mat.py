@@ -4,11 +4,11 @@ import numba as nb
 import numpy as np
 
 # Functions
-from combine_states import combine_states_wrapper
-from cutpoints import cutpoints_AB, cutpoints_ABC, get_times
-from expm import expm
-from run_markov_chain import run_markov_chain_AB, run_markov_chain_ABC
-from trans_mat import get_trans_mat, wrapper_state_general
+from itrails.combine_states import combine_states_wrapper
+from itrails.cutpoints import cutpoints_AB, cutpoints_ABC, get_times
+from itrails.expm import expm
+from itrails.run_markov_chain import run_markov_chain_AB, run_markov_chain_ABC
+from itrails.trans_mat import get_trans_mat, wrapper_state_general
 
 
 def get_joint_prob_mat(

@@ -1,6 +1,7 @@
 import numba as nb
 import numpy as np
-from trans_mat import bell_numbers
+
+from itrails.trans_mat import bell_numbers
 
 
 @nb.jit(nopython=True)
@@ -19,6 +20,7 @@ def combine_by_omega(by_omega_1, by_omega_2):
         by_omega_1[0] if by_omega_1[0] != -1 else by_omega_2[0],
         by_omega_1[1] if by_omega_1[1] != -1 else by_omega_2[1],
     )
+
 
 @nb.jit(nopython=True)
 def translate_to_omega(key):
@@ -85,10 +87,12 @@ def translate_to_omega(key):
     return (l_omega, r_omega)
 
 
-
 @nb.jit(nopython=True)
 def remove_absorbing_indices(
-    omega_dict, absorbing_key, species, tuple_omegas=nb.types.Tuple((nb.types.int64, nb.types.int64))
+    omega_dict,
+    absorbing_key,
+    species,
+    tuple_omegas=nb.types.Tuple((nb.types.int64, nb.types.int64)),
 ):
     """
     Function that removes the absorbing states from the omega dictionary.

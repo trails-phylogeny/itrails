@@ -1,5 +1,6 @@
 import numpy as np
-from expm import expm
+
+from itrails.expm import expm
 
 
 def vanloan_identify(
@@ -388,7 +389,7 @@ def vanloan_identify_wrapper(
 
 def vanloan(trans_mat, path, tim, omega_dict):
     """
-    This function performs the van Loan (1978) method for 
+    This function performs the van Loan (1978) method for
     finding the integral of a series of multiplying matrix
     exponentials. Function generalizes to any number of matrices.
 

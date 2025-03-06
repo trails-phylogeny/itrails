@@ -1,5 +1,5 @@
-import numpy as np
 import numba as nb
+import numpy as np
 
 
 def combine_states(
@@ -78,6 +78,7 @@ def combine_states(
         index_AB = state_dict_sum[state]
         init_comb_all[index_AB] = init_comb_dict[state]
     return init_comb_all
+
 
 def combine_states_wrapper(
     state_dict_1,

@@ -1,8 +1,9 @@
 import numba as nb
 import numpy as np
-from cutpoints import cutpoints_AB, cutpoints_ABC
-from expm import expm
 from scipy.special import comb
+
+from itrails.cutpoints import cutpoints_AB, cutpoints_ABC
+from itrails.expm import expm
 
 
 def rate_mat_JC69(mu):
