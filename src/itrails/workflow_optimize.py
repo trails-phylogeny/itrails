@@ -140,7 +140,7 @@ def main():
     # Extract fixed parameters
     fixed_params = config["fixed_parameters"]
     optimized_params = config["optimized_parameters"]
-    species_list = config["species_list"]
+    species_list = fixed_params["species_list"]
     mu = fixed_params["mu"]
 
     if not (isinstance(fixed_params["n_int_AB"], int) and fixed_params["n_int_AB"] > 0):
