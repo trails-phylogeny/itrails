@@ -21,7 +21,7 @@ optimized_parameters:
   r: [1e-8, (1e-8) / 10, (1e-8) * 10]
 
 input:
-  maf_alignment:  # Can be specified in command line
+  maf_alignment:  "/faststorage/project/GenerationInterval/people/dmartinpestana/data/chr1.filtered.region.maf"
 
 output:
   output_name: "/home/dmartinpestana/genint2_develop/TRAILS/optim1.csv"

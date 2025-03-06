@@ -91,9 +91,8 @@ def main():
         maf_path = input_config
         print(f"Using MAF alignment file: {maf_path}")
     elif not (input_cmd and input_config):
-        print(
-            "Error: MAF alignment file not specified in config file or command-line.",
-            file=sys.stderr,
+        raise ValueError(
+            "Error: MAF alignment file not specified in config file or command-line."
         )
     else:
         raise ValueError(
@@ -175,6 +174,9 @@ def main():
     ]
     if fixed_params["method"] not in allowed_methods:
         raise ValueError(f"Method must be one of {allowed_methods}.")
+    else:
+        print(f"Using optimization method: {fixed_params['method']}")
+        method = fixed_params["method"]
 
     # Validate optimized_parameters
     for param, values in optimized_params.items():
@@ -265,6 +267,10 @@ def main():
 
     # Read MAF alignment
     maf_alignment = maf_parser(maf_path, species_list)
+    fixed_params.pop("method")
+    fixed_params.pop("species_list")
+    fixed_params.pop("mu")
+    fixed_params.pop("num_cpu")
 
     # Run optimization
     optimizer(
@@ -272,7 +278,7 @@ def main():
         fixed_params=fixed_params,
         V_lst=maf_alignment,
         res_name=output_file,
-        method=fixed_params["method"],
+        method=method,
         header=True,
     )
 
