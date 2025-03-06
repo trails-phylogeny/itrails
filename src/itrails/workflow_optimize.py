@@ -141,7 +141,7 @@ def main():
     fixed_params = config["fixed_parameters"]
     optimized_params = config["optimized_parameters"]
     species_list = fixed_params["species_list"]
-    mu = fixed_params["mu"]
+    mu = float(fixed_params["mu"])
 
     if not (isinstance(fixed_params["n_int_AB"], int) and fixed_params["n_int_AB"] > 0):
         raise ValueError("n_int_AB must be a positive integer")
@@ -152,7 +152,7 @@ def main():
         raise ValueError("n_int_ABC must be a positive integer")
 
     # Validate fixed_params["mu"]
-    if not isinstance(fixed_params["mu"], (int, float)) or fixed_params["mu"] <= 0:
+    if not isinstance(mu, (int, float)) or mu <= 0:
         raise ValueError("mu must be a positive float or int.")
 
     # Validate fixed_params["method"]
@@ -187,6 +187,9 @@ def main():
             )
 
         starting, lower, upper = values
+        starting = float(starting)
+        lower = float(lower)
+        upper = float(upper)
 
         # Check that all values are positive numbers.
         for value in values:
