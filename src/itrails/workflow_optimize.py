@@ -155,7 +155,10 @@ def main():
     if not isinstance(mu, (int, float)) or mu <= 0:
         raise ValueError("mu must be a positive float or int.")
 
-    # Validate fixed_params["method"]
+    # Convert the method to lowercase
+    method_input = fixed_params["method"].lower()
+
+    # Validate the lowercased method
     allowed_methods = [
         "nelder-mead",
         "powell",
@@ -172,11 +175,11 @@ def main():
         "trust-exact",
         "trust-krylov",
     ]
-    if fixed_params["method"] not in allowed_methods:
+    if method_input not in allowed_methods:
         raise ValueError(f"Method must be one of {allowed_methods}.")
     else:
-        print(f"Using optimization method: {fixed_params['method']}")
-        method = fixed_params["method"]
+        print(f"Using optimization method: {method_input}")
+        method = method_input
 
     # Validate optimized_parameters
     for param, values in optimized_params.items():
