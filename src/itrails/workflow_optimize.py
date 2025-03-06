@@ -196,6 +196,7 @@ def main():
 
         # Check that all values are positive numbers.
         for value in values:
+            value = float(value)
             if not isinstance(value, (int, float)) or value <= 0:
                 raise ValueError(
                     f"All values for optimized_parameters['{param}'] must be positive numbers."
