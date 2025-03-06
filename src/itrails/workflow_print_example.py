@@ -1,3 +1,5 @@
+def main():
+    example_yaml = """\
 # Example configuration for itrails-optimize
 fixed_parameters:
   n_int_AB: 3
@@ -25,3 +27,9 @@ input:
 
 output:
   output_name: # Path to the output directory (overwritten by console argument)
+"""
+    print(example_yaml)
+
+
+if __name__ == "__main__":
+    main()

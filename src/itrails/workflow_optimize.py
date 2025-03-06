@@ -2,7 +2,6 @@ import argparse
 import multiprocessing as mp
 import os
 import sys
-import urllib.request
 
 import yaml
 
@@ -10,25 +9,25 @@ from itrails.cutpoints import cutpoints_ABC
 from itrails.optimizer import optimizer
 from itrails.read_data import maf_parser
 
-# URL of the example MAF file on Zenodo
-EXAMPLE_MAF_URL = "https://zenodo.org/records/14930374/files/example_alignment.maf"
+## URL of the example MAF file on Zenodo
+# EXAMPLE_MAF_URL = "https://zenodo.org/records/14930374/files/example_alignment.maf"
 
 
-def download_example_maf(output_dir):
-    """
-    Downloads the example MAF file from Zenodo and saves it inside the specified output directory.
-    """
-    maf_path = os.path.join(output_dir, "example_alignment.maf")
-
-    if not os.path.exists(maf_path):
-        print(f"Downloading example MAF file from {EXAMPLE_MAF_URL}...")
-        os.makedirs(output_dir, exist_ok=True)
-        urllib.request.urlretrieve(EXAMPLE_MAF_URL, maf_path)
-        print(f"Download complete! File saved at: {maf_path}")
-    else:
-        print(f"Example MAF file already exists at: {maf_path}")
-
-    return maf_path
+# def download_example_maf(output_dir):
+#    """
+#    Downloads the example MAF file from Zenodo and saves it inside the specified output directory.
+#    """
+#    maf_path = os.path.join(output_dir, "example_alignment.maf")
+#
+#    if not os.path.exists(maf_path):
+#        print(f"Downloading example MAF file from {EXAMPLE_MAF_URL}...")
+#        os.makedirs(output_dir, exist_ok=True)
+#        urllib.request.urlretrieve(EXAMPLE_MAF_URL, maf_path)
+#        print(f"Download complete! File saved at: {maf_path}")
+#    else:
+#        print(f"Example MAF file already exists at: {maf_path}")
+#
+#    return maf_path
 
 
 def load_config(config_file):
