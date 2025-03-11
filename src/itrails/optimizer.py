@@ -8,7 +8,6 @@ from numba.typed import List
 from ray.util.multiprocessing import Pool
 from scipy.optimize import minimize
 
-from itrails.cutpoints import cutpoints_ABC
 from itrails.get_emission_prob_mat import (
     get_emission_prob_mat,
 )
@@ -512,7 +511,15 @@ def trans_emiss_calc(
     return a, b, pi, hidden_names, observed_names
 
 
-def optimization_wrapper(arg_lst, d, V_lst, res_name, info):
+def optimization_wrapper(arg_lst, optimized_params, d, V_lst, res_name, info):
+    d_copy = d.copy()
+    #  T_out and t_upper dynamic calculation
+    for i, param in enumerate(optimized_params):
+        d_copy[param] = arg_lst[i]
+
+    """ t_out = d["t_1"] + d["t_2"] + cutpoints_ABC(d["n_int_ABC"], 1)[d["n_int_ABC"] - 1] * d["N_ABC"] + d["t_upper"] + 2 * d["N_ABC"]
+    # T_out and t_upper on runtime
+
     # Define time model (optimized parameters)
     if len(arg_lst) == 6:
         t_1, t_2, t_upper, N_AB, N_ABC, r = arg_lst
@@ -530,18 +537,18 @@ def optimization_wrapper(arg_lst, d, V_lst, res_name, info):
             + cut_ABC[d["n_int_ABC"] - 1] * N_ABC
             + t_upper
             + 2 * N_ABC
-        )
+        ) """
     # Calculate transition and emission probabilities
     a, b, pi, hidden_names, observed_names = trans_emiss_calc(
-        t_A,
-        t_B,
-        t_C,
-        t_2,
-        t_upper,
-        t_out,
-        N_AB,
-        N_ABC,
-        r,
+        d["t_A"],
+        d["t_B"],
+        d["t_C"],
+        d["t_2"],
+        d["t_upper"],
+        d["t_out"],
+        d["N_AB"],
+        d["N_ABC"],
+        d["r"],
         d["n_int_AB"],
         d["n_int_ABC"],
         "standard",
@@ -580,6 +587,8 @@ def optimization_wrapper(arg_lst, d, V_lst, res_name, info):
 
 def optimizer(
     optim_params,
+    optimized_list,
+    fixed_list,
     fixed_params,
     V_lst,
     res_name,
@@ -607,11 +616,17 @@ def optimizer(
     V_lst : list of numpy arrays
         List of arrays of integers corresponding to the the observed states.
     res_name : str
-        Location and name of the gile where the results should be
+        Location and name of the file where the results should be
         saved (in csv format).
     """
-    init_params = np.array([i[0] for i in optim_params.values()])
-    bnds = [(i[1], i[2]) for i in optim_params.values()]
+    init_params = np.zeros(len(optimized_list))
+    bnds = [(0, 0) for i in optim_params.values()]
+    for i, param in enumerate(optimized_list):
+        init_params[i] = optim_params[param][0]
+        bnds[i] = (optim_params[param][1], optim_params[param][2])
+
+    # init_params = np.array([i[0] for i in optim_params.values()])
+    # bnds = [(i[1], i[2]) for i in optim_params.values()]
     if header:
         write_list(
             ["n_eval"] + list(optim_params.keys()) + ["loglik", "time"], res_name
@@ -626,6 +641,7 @@ def optimizer(
         optimization_wrapper,
         x0=init_params,
         args=(
+            optimized_list,
             fixed_params,
             V_lst,
             res_name,
@@ -635,3 +651,6 @@ def optimizer(
         bounds=bnds,
         options=options,
     )
+
+
+# Añadir optimized params a optimization wrapper con el orden de la lista de optimized.
