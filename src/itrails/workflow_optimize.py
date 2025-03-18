@@ -403,28 +403,28 @@ def main():
             raise ValueError(f"Minimum value for '{param}' must be a positive number.")
         # Special handling for 'r'
         if param == "r":
-            optim_list[i] /= float(mu)
+            optim_list[i] = starting_value / float(mu)
             bounds_list[i] = (
                 lower_bound / float(mu),
                 upper_bound / float(mu),
             )
         else:
-            optim_list[i] *= float(mu)
+            optim_list[i] = starting_value * float(mu)
             bounds_list[i] = (
                 lower_bound * float(mu),
                 upper_bound * float(mu),
             )
 
-    for param, values in fixed_params.items():
+    for param, values in fixed_dict.items():
         if param != "n_int_AB" and param != "n_int_ABC":
             if param == "r":
-                fixed_params[param] = values / float(mu)
+                fixed_dict[param] = float(values) / float(mu)
             else:
-                fixed_params[param] = values * float(mu)
+                fixed_dict[param] = float(values) * float(mu)
 
     print("All parameters validated.")
     print("Fixed parameters:")
-    print(fixed_params)
+    print(fixed_dict)
     print("Optimized parameters:")
     print(optim_variables)
     print("Starting values:")
