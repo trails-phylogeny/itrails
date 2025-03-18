@@ -8,6 +8,7 @@ from numba.typed import List
 from ray.util.multiprocessing import Pool
 from scipy.optimize import minimize
 
+from itrails.cutpoints import cutpoints_ABC
 from itrails.get_emission_prob_mat import (
     get_emission_prob_mat,
 )
@@ -511,11 +512,134 @@ def trans_emiss_calc(
     return a, b, pi, hidden_names, observed_names
 
 
-def optimization_wrapper(arg_lst, optimized_params, d, V_lst, res_name, info):
+def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, info):
     d_copy = d.copy()
-    #  T_out and t_upper dynamic calculation
+
     for i, param in enumerate(optimized_params):
         d_copy[param] = arg_lst[i]
+
+    if case == frozenset(["t_A", "t_B", "t_C"]):
+        cut_ABC = cutpoints_ABC(d["n_int_ABC"], 1)
+        t_out = (
+            (
+                (((d_copy["t_A"] + d_copy["t_B"]) / 2 + d_copy["t_2"]) + d_copy["t_C"])
+                / 2
+                + cut_ABC[d["n_int_ABC"] - 1] * d_copy["N_ABC"]
+                + d_copy["t_upper"]
+                + 2 * d_copy["N_ABC"]
+            )
+            if "t_out" not in d_copy
+            else d_copy["t_out"]
+        )
+        d_copy["t_out"] = t_out
+
+    elif case == frozenset(["t_1", "t_A"]):
+        t_B = d_copy["t_1"]
+        t_C = d_copy["t_1"] + d_copy["t_2"]
+        t_out = (
+            d_copy["t_1"]
+            + d_copy["t_2"]
+            + cut_ABC[d["n_int_ABC"] - 1] * d_copy["N_ABC"]
+            + d_copy["t_upper"]
+            + 2 * d_copy["N_ABC"]
+            if "t_out" not in d_copy
+            else d_copy["t_out"]
+        )
+        d_copy["t_B"] = t_B
+        d_copy["t_C"] = t_C
+        d_copy["t_out"] = t_out
+        d_copy.pop("t_1")
+    elif case == frozenset(["t_1", "t_B"]):
+        t_A = d_copy["t_1"]
+        t_C = d_copy["t_1"] + d_copy["t_2"]
+        t_out = (
+            d_copy["t_1"]
+            + d_copy["t_2"]
+            + cut_ABC[d["n_int_ABC"] - 1] * d_copy["N_ABC"]
+            + d_copy["t_upper"]
+            + 2 * d_copy["N_ABC"]
+            if "t_out" not in d_copy
+            else d_copy["t_out"]
+        )
+        d_copy["t_A"] = t_A
+        d_copy["t_C"] = t_C
+        d_copy["t_out"] = t_out
+        d_copy.pop("t_1")
+    elif case == frozenset(["t_1", "t_C"]):
+        t_A = d_copy["t_1"]
+        t_B = d_copy["t_1"]
+        t_out = (
+            d_copy["t_1"]
+            + d_copy["t_2"]
+            + cut_ABC[d["n_int_ABC"] - 1] * d_copy["N_ABC"]
+            + d_copy["t_upper"]
+            + 2 * d_copy["N_ABC"]
+            if "t_out" not in d_copy
+            else d_copy["t_out"]
+        )
+        d_copy["t_A"] = t_A
+        d_copy["t_B"] = t_B
+        d_copy["t_out"] = t_out
+        d_copy.pop("t_1")
+    elif case == frozenset(["t_A", "t_B"]):
+        t_C = (d_copy["t_A"] + d_copy["t_B"]) / 2 + d_copy["t_2"]
+        t_out = (
+            (
+                (((d_copy["t_A"] + d_copy["t_B"]) / 2 + d_copy["t_2"]) + t_C) / 2
+                + cut_ABC[d["n_int_ABC"] - 1] * d_copy["N_ABC"]
+                + d_copy["t_upper"]
+                + 2 * d_copy["N_ABC"]
+            )
+            if "t_out" not in d_copy
+            else d_copy["t_out"]
+        )
+        d_copy["t_C"] = t_C
+        d_copy["t_out"] = t_out
+    elif case == frozenset(["t_A", "t_C"]):
+        t_B = (d_copy["t_A"] + d_copy["t_C"] - d_copy["t_2"]) / 2
+        t_out = (
+            (
+                (((d_copy["t_A"] + t_B) / 2 + d_copy["t_2"]) + d_copy["t_C"]) / 2
+                + cut_ABC[d["n_int_ABC"] - 1] * d_copy["N_ABC"]
+                + d_copy["t_upper"]
+                + 2 * d_copy["N_ABC"]
+            )
+            if "t_out" not in d_copy
+            else d_copy["t_out"]
+        )
+        d_copy["t_B"] = t_B
+        d_copy["t_out"] = t_out
+    elif case == frozenset(["t_B", "t_C"]):
+        t_A = (d_copy["t_B"] + d_copy["t_C"] - d_copy["t_2"]) / 2
+        t_out = (
+            (
+                (((t_A + d_copy["t_B"]) / 2 + d_copy["t_2"]) + d_copy["t_C"]) / 2
+                + cut_ABC[d["n_int_ABC"] - 1] * d_copy["N_ABC"]
+                + d_copy["t_upper"]
+                + 2 * d_copy["N_ABC"]
+            )
+            if "t_out" not in d_copy
+            else d_copy["t_out"]
+        )
+        d_copy["t_A"] = t_A
+        d_copy["t_out"] = t_out
+    elif case == frozenset(["t_1"]):
+        t_A = t_B = d_copy["t_1"]
+        t_C = d_copy["t_1"] + d_copy["t_2"]
+        t_out = (
+            d_copy["t_1"]
+            + d_copy["t_2"]
+            + cut_ABC[d["n_int_ABC"] - 1] * d_copy["N_ABC"]
+            + d_copy["t_upper"]
+            + 2 * d_copy["N_ABC"]
+            if "t_out" not in d_copy
+            else d_copy["t_out"]
+        )
+        d_copy["t_A"] = t_A
+        d_copy["t_B"] = t_B
+        d_copy["t_C"] = t_C
+        d_copy["t_out"] = t_out
+        d_copy.pop("t_1")
 
     """ t_out = d["t_1"] + d["t_2"] + cutpoints_ABC(d["n_int_ABC"], 1)[d["n_int_ABC"] - 1] * d["N_ABC"] + d["t_upper"] + 2 * d["N_ABC"]
     # T_out and t_upper on runtime
@@ -534,23 +658,23 @@ def optimization_wrapper(arg_lst, optimized_params, d, V_lst, res_name, info):
         cut_ABC = cutpoints_ABC(d["n_int_ABC"], 1)
         t_out = (
             (((t_A + t_B) / 2 + t_2) + t_C) / 2
-            + cut_ABC[d["n_int_ABC"] - 1] * N_ABC
+            + cut_ABC[d["n_int_ABC"] - 1] * N_ABC 
             + t_upper
             + 2 * N_ABC
         ) """
     # Calculate transition and emission probabilities
     a, b, pi, hidden_names, observed_names = trans_emiss_calc(
-        d["t_A"],
-        d["t_B"],
-        d["t_C"],
-        d["t_2"],
-        d["t_upper"],
-        d["t_out"],
-        d["N_AB"],
-        d["N_ABC"],
-        d["r"],
-        d["n_int_AB"],
-        d["n_int_ABC"],
+        d_copy["t_A"],
+        d_copy["t_B"],
+        d_copy["t_C"],
+        d_copy["t_2"],
+        d_copy["t_upper"],
+        d_copy["t_out"],
+        d_copy["N_AB"],
+        d_copy["N_ABC"],
+        d_copy["r"],
+        d_copy["n_int_AB"],
+        d_copy["n_int_ABC"],
         "standard",
         "standard",
         info["tmp_path"],
@@ -586,12 +710,13 @@ def optimization_wrapper(arg_lst, optimized_params, d, V_lst, res_name, info):
 
 
 def optimizer(
-    optim_params,
-    optimized_list,
-    fixed_list,
+    optim_variables,
+    optim_list,
+    bounds,
     fixed_params,
     V_lst,
     res_name,
+    case,
     method="Nelder-Mead",
     header=True,
     tmp_path="./",
@@ -619,18 +744,8 @@ def optimizer(
         Location and name of the file where the results should be
         saved (in csv format).
     """
-    init_params = np.zeros(len(optimized_list))
-    bnds = [(0, 0) for i in optim_params.values()]
-    for i, param in enumerate(optimized_list):
-        init_params[i] = optim_params[param][0]
-        bnds[i] = (optim_params[param][1], optim_params[param][2])
-
-    # init_params = np.array([i[0] for i in optim_params.values()])
-    # bnds = [(i[1], i[2]) for i in optim_params.values()]
     if header:
-        write_list(
-            ["n_eval"] + list(optim_params.keys()) + ["loglik", "time"], res_name
-        )
+        write_list(["n_eval"] + list(optim_variables) + ["loglik", "time"], res_name)
     options = {"maxiter": 10000, "disp": True}
     # if method in ['L-BFGS-B', 'TNC']:
     #     if len(optim_params) == 6:
@@ -639,18 +754,16 @@ def optimizer(
     #         options['eps'] = np.array([10, 10, 10, 1, 10, 10, 1, 1, 1e-9])
     res = minimize(
         optimization_wrapper,
-        x0=init_params,
+        x0=optim_list,
         args=(
-            optimized_list,
+            optim_variables,
+            case,
             fixed_params,
             V_lst,
             res_name,
             {"Nfeval": 0, "time": time.time(), "tmp_path": tmp_path},
         ),
         method=method,
-        bounds=bnds,
+        bounds=bounds,
         options=options,
     )
-
-
-# Añadir optimized params a optimization wrapper con el orden de la lista de optimized.
