@@ -587,7 +587,6 @@ def trans_emiss_calc(
 
 
 def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, info):
-    optim_timeline = os.path.join(res_name, "optimization_history.csv")
     best_model_yaml = os.path.join(res_name, "best_model.yaml")
 
     d_copy = d.copy()
@@ -758,7 +757,7 @@ def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, in
     # Write parameter estimates, likelihood and time
     write_list(
         [info["Nfeval"]] + arg_lst.tolist() + [loglik, time.time() - info["time"]],
-        optim_timeline,
+        os.path.join(res_name, "optimization_history.csv"),
     )
     # Update best model
     update_best_model(
@@ -808,8 +807,12 @@ def optimizer(
         Location and name of the file where the results should be
         saved (in csv format).
     """
+    optimization_history = os.path.join(res_name, "optimization_history.csv")
     if header:
-        write_list(["n_eval"] + list(optim_variables) + ["loglik", "time"], res_name)
+        write_list(
+            ["n_eval"] + list(optim_variables) + ["loglik", "time"],
+            optimization_history,
+        )
     options = {"maxiter": 10000, "disp": True}
     # if method in ['L-BFGS-B', 'TNC']:
     #     if len(optim_params) == 6:

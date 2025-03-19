@@ -6,6 +6,7 @@ import sys
 import yaml
 
 from itrails.cutpoints import cutpoints_ABC
+from itrails.optimizer import optimizer
 from itrails.read_data import maf_parser
 
 ## URL of the example MAF file on Zenodo
@@ -426,16 +427,6 @@ def main():
             else:
                 fixed_dict[param] = float(values) * float(mu)
 
-    print("All parameters validated.")
-    print("Fixed parameters:")
-    print(fixed_dict)
-    print("Optimized parameters:")
-    print(optim_variables)
-    print("Starting values:")
-    print(optim_list)
-    print("Bounds:")
-    print(bounds_list)
-
     filtered_fixed_dict = {
         k: v for k, v in fixed_dict.items() if k not in ["n_int_AB", "n_int_ABC"]
     }
@@ -474,8 +465,6 @@ def main():
         yaml.dump(starting_params, f)
 
     best_model_yaml = os.path.join(output_path, "best_model.yaml")
-    print("Starting best model file:")
-    print(best_model_yaml)
     starting_best_model = {
         "fixed_parameters": filtered_fixed_dict,
         "optimized_parameters": {},
@@ -493,17 +482,17 @@ def main():
         raise ValueError("Error reading MAF alignment file.")
 
     # Run optimization
-    # optimizer(
-    #    optim_variables=optim_variables,
-    #    optim_list=optim_list,
-    #    bounds=bounds_list,
-    #    fixed_params=fixed_params,
-    #    V_lst=maf_alignment,
-    #    res_name=output_file,
-    #    case=case,
-    #    method=method,
-    #    header=True,
-    # )
+    optimizer(
+        optim_variables=optim_variables,
+        optim_list=optim_list,
+        bounds=bounds_list,
+        fixed_params=fixed_params,
+        V_lst=maf_alignment,
+        res_name=output_path,
+        case=case,
+        method=method,
+        header=True,
+    )
 
     print(
         f"Optimization complete. Results saved to {os.path.join(output_path, "optimization_history.csv")}.\n Best model saved to {best_model_yaml}."
