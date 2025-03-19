@@ -593,14 +593,14 @@ def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, in
 
     for i, param in enumerate(optimized_params):
         d_copy[param] = arg_lst[i]
-
+    cut_ABC = cutpoints_ABC(d_copy["n_int_ABC"], 1)
     if case == frozenset(["t_A", "t_B", "t_C"]):
-        cut_ABC = cutpoints_ABC(d_copy["n_int_ABC"], 1)
+
         t_out = (
             (
                 (((d_copy["t_A"] + d_copy["t_B"]) / 2 + d_copy["t_2"]) + d_copy["t_C"])
                 / 2
-                + cut_ABC[d["n_int_ABC"] - 1] * d_copy["N_ABC"]
+                + cut_ABC[d_copy["n_int_ABC"] - 1] * d_copy["N_ABC"]
                 + d_copy["t_upper"]
                 + 2 * d_copy["N_ABC"]
             )
@@ -615,7 +615,7 @@ def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, in
         t_out = (
             d_copy["t_1"]
             + d_copy["t_2"]
-            + cut_ABC[d["n_int_ABC"] - 1] * d_copy["N_ABC"]
+            + cut_ABC[d_copy["n_int_ABC"] - 1] * d_copy["N_ABC"]
             + d_copy["t_upper"]
             + 2 * d_copy["N_ABC"]
             if "t_out" not in d_copy
@@ -631,7 +631,7 @@ def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, in
         t_out = (
             d_copy["t_1"]
             + d_copy["t_2"]
-            + cut_ABC[d["n_int_ABC"] - 1] * d_copy["N_ABC"]
+            + cut_ABC[d_copy["n_int_ABC"] - 1] * d_copy["N_ABC"]
             + d_copy["t_upper"]
             + 2 * d_copy["N_ABC"]
             if "t_out" not in d_copy
@@ -647,7 +647,7 @@ def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, in
         t_out = (
             d_copy["t_1"]
             + d_copy["t_2"]
-            + cut_ABC[d["n_int_ABC"] - 1] * d_copy["N_ABC"]
+            + cut_ABC[d_copy["n_int_ABC"] - 1] * d_copy["N_ABC"]
             + d_copy["t_upper"]
             + 2 * d_copy["N_ABC"]
             if "t_out" not in d_copy
@@ -662,7 +662,7 @@ def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, in
         t_out = (
             (
                 (((d_copy["t_A"] + d_copy["t_B"]) / 2 + d_copy["t_2"]) + t_C) / 2
-                + cut_ABC[d["n_int_ABC"] - 1] * d_copy["N_ABC"]
+                + cut_ABC[d_copy["n_int_ABC"] - 1] * d_copy["N_ABC"]
                 + d_copy["t_upper"]
                 + 2 * d_copy["N_ABC"]
             )
@@ -676,7 +676,7 @@ def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, in
         t_out = (
             (
                 (((d_copy["t_A"] + t_B) / 2 + d_copy["t_2"]) + d_copy["t_C"]) / 2
-                + cut_ABC[d["n_int_ABC"] - 1] * d_copy["N_ABC"]
+                + cut_ABC[d_copy["n_int_ABC"] - 1] * d_copy["N_ABC"]
                 + d_copy["t_upper"]
                 + 2 * d_copy["N_ABC"]
             )
@@ -690,7 +690,7 @@ def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, in
         t_out = (
             (
                 (((t_A + d_copy["t_B"]) / 2 + d_copy["t_2"]) + d_copy["t_C"]) / 2
-                + cut_ABC[d["n_int_ABC"] - 1] * d_copy["N_ABC"]
+                + cut_ABC[d_copy["n_int_ABC"] - 1] * d_copy["N_ABC"]
                 + d_copy["t_upper"]
                 + 2 * d_copy["N_ABC"]
             )
@@ -705,7 +705,7 @@ def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, in
         t_out = (
             d_copy["t_1"]
             + d_copy["t_2"]
-            + cut_ABC[d["n_int_ABC"] - 1] * d_copy["N_ABC"]
+            + cut_ABC[d_copy["n_int_ABC"] - 1] * d_copy["N_ABC"]
             + d_copy["t_upper"]
             + 2 * d_copy["N_ABC"]
             if "t_out" not in d_copy
@@ -819,13 +819,14 @@ def optimizer(
     #         options['eps'] = np.array([10, 1, 10, 1, 1, 1e-9])
     #     elif len(optim_params) == 9:
     #         options['eps'] = np.array([10, 10, 10, 1, 10, 10, 1, 1, 1e-9])
+    d_copy = fixed_params.copy()
     res = minimize(
         optimization_wrapper,
         x0=optim_list,
         args=(
             optim_variables,
             case,
-            fixed_params,
+            d_copy,
             V_lst,
             res_name,
             {"Nfeval": 0, "time": time.time(), "tmp_path": tmp_path},
