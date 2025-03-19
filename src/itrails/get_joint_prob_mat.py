@@ -96,7 +96,7 @@ def get_joint_prob_mat(
     inverted_omega_nonrev_counts[0] = nb.typed.List([0])
     inverted_omega_nonrev_counts[1] = nb.typed.List([3])
 
-    print("Before run_MC_AB")
+    print("Before run_MC_AB", flush=True)
     final_AB = run_markov_chain_AB(
         trans_mat_ab,
         times_AB,
@@ -104,7 +104,7 @@ def get_joint_prob_mat(
         pi_AB,
         n_int_AB,
     )
-    print("After run_MC_AB")
+    print("After run_MC_AB", flush=True)
     pi_ABC = combine_states_wrapper(
         number_dict_AB,
         number_dict_C,
@@ -123,7 +123,7 @@ def get_joint_prob_mat(
     inverted_omega_nonrev_counts[0] = nb.typed.List([0])
     inverted_omega_nonrev_counts[1] = nb.typed.List([3, 5, 6])
     inverted_omega_nonrev_counts[2] = nb.typed.List([7])
-    print("Before run_MC_ABC")
+    print("Before run_MC_ABC", flush=True)
     final_ABC = run_markov_chain_ABC(
         trans_mat_abc,
         times_ABC,
@@ -135,7 +135,7 @@ def get_joint_prob_mat(
         species=3,
         absorbing_state=(7, 7),
     )
-    print("After run_MC_ABC")
+    print("After run_MC_ABC", flush=True)
     return final_ABC
 
 
