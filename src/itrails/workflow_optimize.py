@@ -451,6 +451,8 @@ def main():
         yaml.dump(starting_params, f)
 
     best_model_yaml = os.path.join(output_path, "best_model.yaml")
+    print("Starting best model file:")
+    print(best_model_yaml)
     starting_best_model = {
         "fixed_parameters_mu_norm": filtered_fixed_dict,
         "optimized_parameters_mu_norm": {},
