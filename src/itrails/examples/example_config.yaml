@@ -6,9 +6,7 @@ fixed_parameters:
 optimized_parameters: # [starting, min, max]
   N_AB: [50000, 5000, 500000]
   N_ABC: [50000, 5000, 500000]
-  t_A: [240000, 24000, 2400000]
-  t_B: [240000, 24000, 2400000]
-  t_C: [320000, 32000, 3200000]
+  t_1: [240000, 24000, 2400000]
   t_upper: [745069.3855665945, 74506.93855665945, 7450693.855665945]
   t_2: [40000, 4000, 400000]
 
@@ -18,9 +16,8 @@ optimized_parameters: # [starting, min, max]
 settings:
   input_maf: # Path to the MAF alignment file (overwritten by console argument)
   output_name: # Path to the output directory (overwritten by console argument)
-  num_cpu: 64
+  num_cpu: 128
   method: "Nelder-Mead"
   species_list: ["hg38", "panTro5", "gorGor5", "ponAbe2"]
   n_int_AB: 3
   n_int_ABC: 3
-#pasar nintab nint abc
