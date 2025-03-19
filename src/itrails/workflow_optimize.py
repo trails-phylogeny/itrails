@@ -486,7 +486,7 @@ def main():
         optim_variables=optim_variables,
         optim_list=optim_list,
         bounds=bounds_list,
-        fixed_params=fixed_params,
+        fixed_params=fixed_dict,
         V_lst=maf_alignment,
         res_name=output_path,
         case=case,

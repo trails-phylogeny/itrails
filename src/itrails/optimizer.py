@@ -595,7 +595,7 @@ def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, in
         d_copy[param] = arg_lst[i]
 
     if case == frozenset(["t_A", "t_B", "t_C"]):
-        cut_ABC = cutpoints_ABC(d["n_int_ABC"], 1)
+        cut_ABC = cutpoints_ABC(d_copy["n_int_ABC"], 1)
         t_out = (
             (
                 (((d_copy["t_A"] + d_copy["t_B"]) / 2 + d_copy["t_2"]) + d_copy["t_C"])
