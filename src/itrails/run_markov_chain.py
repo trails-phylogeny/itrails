@@ -578,6 +578,7 @@ def run_markov_chain_ABC(
     """
 
     for step in range(n_int_ABC - 1):
+        print("Step", step)
         exponential_time = expm(trans_mat * times[step])
         og_keys = list(prob_dict.keys())
         for path in og_keys:
@@ -758,7 +759,9 @@ def run_markov_chain_ABC(
         omega_dict=omega_dict, absorbing_key=absorbing_state, species=species
     )
     prob_dict_sum = {}
+
     for path in og_keys:
+        print("Deepest")
         (l_path, r_path) = path
         acc_prob_mats_noabs = np.zeros((324, 1, 201), dtype=np.float64)
         deepest_keys_acc_array = np.zeros((324, 9, 6), dtype=np.int64)
