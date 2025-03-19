@@ -2,6 +2,7 @@
 
 import numba as nb
 import numpy as np
+import ray
 
 # Functions
 from itrails.combine_states import combine_states_wrapper
@@ -123,6 +124,8 @@ def get_joint_prob_mat(
     inverted_omega_nonrev_counts[0] = nb.typed.List([0])
     inverted_omega_nonrev_counts[1] = nb.typed.List([3, 5, 6])
     inverted_omega_nonrev_counts[2] = nb.typed.List([7])
+    if ray.is_initialized():
+        ray.shutdown()
     print("Before run_MC_ABC", flush=True)
     final_ABC = run_markov_chain_ABC(
         trans_mat_abc,
