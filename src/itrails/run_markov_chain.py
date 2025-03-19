@@ -576,7 +576,13 @@ def run_markov_chain_ABC(
     :return: Updated dictionary of each path (keys) and probabilities for each state at the end of the Markov chain (time equals inf)(values).
     :rtype: Numba typed dictionary
     """
-
+    print("Starting run_markov_chain_ABC...")
+    if ray.is_initialized():
+        print("Ray is already initialized!")
+    else:
+        print("Initializing Ray...")
+        ray.init(ignore_reinit_error=True)
+    print("After Ray initialization")
     for step in range(n_int_ABC - 1):
         print("Step", step)
         exponential_time = expm(trans_mat * times[step])
