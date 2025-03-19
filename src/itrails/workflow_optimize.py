@@ -140,10 +140,11 @@ def main():
     # Extract fixed parameters
     fixed_params = config["fixed_parameters"]
     optimized_params = config["optimized_parameters"]
-    species_list = config["settings"]["species_list"]
+    settings = config["settings"]
+    species_list = settings["species_list"]
     mu = float(fixed_params["mu"])
-    n_int_AB = config["settings"].get("n_int_AB")
-    n_int_ABC = config["settings"].get("n_int_ABC")
+    n_int_AB = settings["n_int_AB"]
+    n_int_ABC = settings["n_int_ABC"]
     fixed_dict = {}
 
     # Fixed parameters validation, sets n_int_AB and n_int_ABC in fixed_dict
@@ -157,7 +158,7 @@ def main():
         raise ValueError("mu must be a positive float or int.")
 
     # Method validation
-    method_input = config["settings"]["method"].lower()
+    method_input = settings["method"].lower()
     allowed_methods = [
         "nelder-mead",
         "l-bfgs-b",
@@ -432,6 +433,35 @@ def main():
     print("Bounds:")
     print(bounds_list)
 
+    filtered_fixed_dict = {
+        k: v for k, v in fixed_dict.items() if k not in ["n_int_AB", "n_int_ABC"]
+    }
+    starting_params_yaml = os.path.join(output_path, "starting_params.yaml")
+    starting_params = {
+        "fixed_parameters": filtered_fixed_dict,
+        "starting_optimized_parameters_mu_norm": {
+            var: optim_list[i] for i, var in enumerate(optim_variables)
+        },
+        "bounds_optimized_params_mu_norm": {
+            var: bounds_list[i] for i, var in enumerate(optim_variables)
+        },
+        "settings": settings,
+    }
+    with open(starting_params_yaml, "w") as f:
+        yaml.dump(starting_params, f)
+
+    best_model_yaml = os.path.join(output_path, "best_model.yaml")
+    starting_best_model = {
+        "fixed_parameters_mu_norm": filtered_fixed_dict,
+        "optimized_parameters_mu_norm": {},
+        "results": {"log_likelihood": 0, "iteration": None},
+        "settings": settings,
+    }
+    with open(best_model_yaml, "w") as f:
+        yaml.dump(
+            starting_best_model,
+            f,
+        )
     # Read MAF alignment
     maf_alignment = maf_parser(maf_path, species_list)
     if maf_alignment is None:

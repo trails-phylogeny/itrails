@@ -1,8 +1,10 @@
 import multiprocessing as mp
 import os
+import sys
 import time
 
 import numpy as np
+import yaml
 from numba import njit
 from numba.typed import List
 from ray.util.multiprocessing import Pool
@@ -342,6 +344,72 @@ def write_list(lst, res_name):
         f.write("\n")
 
 
+def update_best_model(
+    best_model_yaml, optim_variables, current_optim_params, current_result, iteration
+):
+    """
+    Updates a YAML file that stores the best model information.
+
+    This function checks whether the current result (typically a -log likelihood value)
+    is better (i.e. lower) than the one stored in the YAML file. If it is better or if
+    no best result has been stored yet, the function updates (or creates) the file with
+    the following four main fields:
+
+    - ``fixed_parameters``: A nested dictionary of the fixed parameters (written only once).
+    - ``optimized_parameters``: A dictionary with keys corresponding to the optimized
+      parameters (from ``optim_variables``) and their current values (from ``current_optim_params``).
+    - ``results``: The best (lowest) -log likelihood value of the model.
+    - ``settings``: A copy of the settings from the original model configuration.
+
+    :param best_model_yaml: Path to the YAML file (e.g., "best_model.yaml").
+    :type best_model_yaml: str
+    :param fixed_params: Dictionary of fixed parameters.
+    :type fixed_params: dict
+    :param optim_variables: List of names for optimized parameters.
+    :type optim_variables: list
+    :param current_optim_params: List of current optimized parameter values.
+                                 The order should correspond to the order of ``optim_variables``.
+    :type current_optim_params: list
+    :param current_result: The current -log likelihood value to compare against the stored value.
+                           Lower values are considered better.
+    :type current_result: float
+    :param settings: Settings from the original model configuration.
+    :type settings: dict
+    """
+    # Attempt to load existing best model information (if any)
+    if os.path.exists(best_model_yaml):
+        with open(best_model_yaml, "r") as f:
+            try:
+                best_model_data = yaml.safe_load(f)
+            except yaml.YAMLError as e:
+                print(f"Error loading best model file: {e}")
+                sys.exit(1)
+    else:
+        raise FileNotFoundError(f"Best model file not found: {best_model_yaml}")
+
+    # Retrieve the stored best result, if available
+    prev_loglik = best_model_data["results"]["log_likelihood"]
+    update_flag = False
+
+    # Update if no stored result exists or if the current result is better (i.e. lower)
+    if prev_loglik is None or current_result > prev_loglik:
+        update_flag = True
+
+    if update_flag:
+        # Build the optimized_parameters dictionary
+        opt_params_dict = {
+            var: current_optim_params[i] for i, var in enumerate(optim_variables)
+        }
+
+        # Update the best model data dictionary with the four main fields
+        best_model_data["optimized_parameters"] = opt_params_dict
+        best_model_data["results"]["log_likelihood"] = current_result
+        best_model_data["results"]["iteration"] = iteration
+
+        with open(best_model_yaml, "w") as f:
+            yaml.dump(best_model_data, f)
+
+
 def trans_emiss_calc(
     t_A,
     t_B,
@@ -513,6 +581,10 @@ def trans_emiss_calc(
 
 
 def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, info):
+    optim_timeline = os.path.join(res_name, "optimization_history.csv")
+    best_model_yaml = os.path.join(res_name, "best_model.yaml")
+    starting_params = os.path.join(res_name, "starting_params.yaml")
+
     d_copy = d.copy()
 
     for i, param in enumerate(optimized_params):
@@ -641,27 +713,6 @@ def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, in
         d_copy["t_out"] = t_out
         d_copy.pop("t_1")
 
-    """ t_out = d["t_1"] + d["t_2"] + cutpoints_ABC(d["n_int_ABC"], 1)[d["n_int_ABC"] - 1] * d["N_ABC"] + d["t_upper"] + 2 * d["N_ABC"]
-    # T_out and t_upper on runtime
-
-    # Define time model (optimized parameters)
-    if len(arg_lst) == 6:
-        t_1, t_2, t_upper, N_AB, N_ABC, r = arg_lst
-        t_A = t_B = t_1
-        t_C = t_1 + t_2
-        cut_ABC = cutpoints_ABC(d["n_int_ABC"], 1)
-        t_out = t_1 + t_2 + cut_ABC[d["n_int_ABC"] - 1] * N_ABC + t_upper + 2 * N_ABC
-    elif len(arg_lst) == 9:
-        t_A, t_B, t_C, t_2, t_upper, t_out, N_AB, N_ABC, r = arg_lst
-    elif len(arg_lst) == 8:
-        t_A, t_B, t_C, t_2, t_upper, N_AB, N_ABC, r = arg_lst
-        cut_ABC = cutpoints_ABC(d["n_int_ABC"], 1)
-        t_out = (
-            (((t_A + t_B) / 2 + t_2) + t_C) / 2
-            + cut_ABC[d["n_int_ABC"] - 1] * N_ABC 
-            + t_upper
-            + 2 * N_ABC
-        ) """
     # Calculate transition and emission probabilities
     a, b, pi, hidden_names, observed_names = trans_emiss_calc(
         d_copy["t_A"],
@@ -702,7 +753,15 @@ def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, in
     # Write parameter estimates, likelihood and time
     write_list(
         [info["Nfeval"]] + arg_lst.tolist() + [loglik, time.time() - info["time"]],
-        res_name,
+        optim_timeline,
+    )
+    # Update best model
+    update_best_model(
+        best_model_yaml,
+        optimized_params,
+        arg_lst,
+        loglik,
+        info["Nfeval"],
     )
     # Update optimization cycle
     info["Nfeval"] += 1
