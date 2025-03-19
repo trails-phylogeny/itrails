@@ -220,8 +220,6 @@ def main():
             f"Invalid combination of time values: {found_values}, check possible combinations in the documentation."
         )
 
-    # Initialize array for tracking fixed/optimized/missing values
-
     # Assign values based on presence and whether they are fixed or optimized
     if "t_1" in found_values:
         if t_1_fixed:
