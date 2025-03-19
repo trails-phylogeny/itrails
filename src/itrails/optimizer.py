@@ -583,7 +583,6 @@ def trans_emiss_calc(
 def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, info):
     optim_timeline = os.path.join(res_name, "optimization_history.csv")
     best_model_yaml = os.path.join(res_name, "best_model.yaml")
-    starting_params = os.path.join(res_name, "starting_params.yaml")
 
     d_copy = d.copy()
 
