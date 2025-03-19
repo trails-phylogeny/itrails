@@ -388,6 +388,7 @@ def update_best_model(
         raise FileNotFoundError(f"Best model file not found: {best_model_yaml}")
 
     # Retrieve the stored best result, if available
+    mu = float(best_model_data["fixed_parameters"]["mu"])
     prev_loglik = best_model_data["results"]["log_likelihood"]
     update_flag = False
 
@@ -397,12 +398,17 @@ def update_best_model(
 
     if update_flag:
         # Build the optimized_parameters dictionary
-        opt_params_dict = {
-            var: current_optim_params[i] for i, var in enumerate(optim_variables)
+        optim_dict = {
+            vari: current_optim_params[i] for i, vari in enumerate(optim_variables)
         }
+        for param, value in optim_dict.items():
+            if param == "r":
+                optim_dict[param] = float(value) * mu
+            else:
+                optim_dict[param] = float(value) / mu
 
         # Update the best model data dictionary with the four main fields
-        best_model_data["optimized_parameters"] = opt_params_dict
+        best_model_data["optimized_parameters"] = optim_dict
         best_model_data["results"]["log_likelihood"] = current_result
         best_model_data["results"]["iteration"] = iteration
 

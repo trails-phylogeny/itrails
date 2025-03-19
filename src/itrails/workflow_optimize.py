@@ -101,11 +101,11 @@ def main():
         print(
             f"Warning: Output file specified in both config file ({output_config}) and command-line ({output_cmd}). Using command-line output."
         )
-        output_file = output_cmd
+        output_path = output_cmd
     elif output_cmd:
-        output_file = output_cmd
+        output_path = output_cmd
     elif output_config:
-        output_file = output_config
+        output_path = output_config
     elif not (output_cmd and output_config):
         raise ValueError(
             "Error: Output file not specified in config file or command-line."
@@ -115,7 +115,6 @@ def main():
             "Error: Output file not specified in config file or command-line."
         )
 
-    output_path = os.path.dirname(output_file)
     os.makedirs(output_path, exist_ok=True)
     print(f"Results will be saved to: {output_path}")
 
@@ -436,15 +435,35 @@ def main():
     filtered_fixed_dict = {
         k: v for k, v in fixed_dict.items() if k not in ["n_int_AB", "n_int_ABC"]
     }
+
+    for param, value in filtered_fixed_dict.items():
+        if param == "r":
+            filtered_fixed_dict[param] = float(value) * mu
+        else:
+            filtered_fixed_dict[param] = float(value) / mu
+
+    filtered_fixed_dict["mu"] = mu
+
     starting_params_yaml = os.path.join(output_path, "starting_params.yaml")
+    optim_dict = {vari: optim_list[i] for i, vari in enumerate(optim_variables)}
+    for param, value in optim_dict.items():
+        if param == "r":
+            optim_dict[param] = float(value) * mu
+        else:
+            optim_dict[param] = float(value) / mu
+    bound_dict = {
+        vari: (bounds_list[i][0], bounds_list[i][1])
+        for i, vari in enumerate(optim_variables)
+    }
+    for param, value in bound_dict.items():
+        if param == "r":
+            bound_dict[param] = (float(value[0]) * mu, float(value[1]) * mu)
+        else:
+            bound_dict[param] = (float(value[0]) / mu, float(value[1]) / mu)
     starting_params = {
         "fixed_parameters": filtered_fixed_dict,
-        "starting_optimized_parameters_mu_norm": {
-            var: optim_list[i] for i, var in enumerate(optim_variables)
-        },
-        "bounds_optimized_params_mu_norm": {
-            var: bounds_list[i] for i, var in enumerate(optim_variables)
-        },
+        "starting_optimized_parameters": optim_dict,
+        "bounds_optimized_params": bound_dict,
         "settings": settings,
     }
     with open(starting_params_yaml, "w") as f:
@@ -454,8 +473,8 @@ def main():
     print("Starting best model file:")
     print(best_model_yaml)
     starting_best_model = {
-        "fixed_parameters_mu_norm": filtered_fixed_dict,
-        "optimized_parameters_mu_norm": {},
+        "fixed_parameters": filtered_fixed_dict,
+        "optimized_parameters": {},
         "results": {"log_likelihood": 0, "iteration": None},
         "settings": settings,
     }
@@ -482,7 +501,9 @@ def main():
     #    header=True,
     # )
 
-    print(f"Optimization complete. Results saved to {output_file}")
+    print(
+        f"Optimization complete. Results saved to {os.path.join(output_path, "optimization_history.csv")}.\n Best model saved to {best_model_yaml}."
+    )
 
 
 if __name__ == "__main__":
