@@ -116,6 +116,7 @@ def main():
         )
 
     os.makedirs(output_path, exist_ok=True)
+
     print(f"Results will be saved to: {output_path}")
 
     # Retrieve the total number of available CPU cores
@@ -140,6 +141,9 @@ def main():
     fixed_params = config["fixed_parameters"]
     optimized_params = config["optimized_parameters"]
     settings = config["settings"]
+    settings["output_name"] = output_path
+    settings["input_maf"] = maf_path
+    settings["num_cpu"] = num_cpu
     species_list = settings["species_list"]
     mu = float(fixed_params["mu"])
     n_int_AB = settings["n_int_AB"]
@@ -457,9 +461,9 @@ def main():
     }
     for param, value in bound_dict.items():
         if param == "r":
-            bound_dict[param] = (float(value[0]) * mu, float(value[1]) * mu)
+            bound_dict[param] = [float(value[0]) * mu, float(value[1]) * mu]
         else:
-            bound_dict[param] = (float(value[0]) / mu, float(value[1]) / mu)
+            bound_dict[param] = [float(value[0]) / mu, float(value[1]) / mu]
     starting_params = {
         "fixed_parameters": filtered_fixed_dict,
         "starting_optimized_parameters": optim_dict,
