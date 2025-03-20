@@ -576,7 +576,7 @@ def run_markov_chain_ABC(
     :return: Updated dictionary of each path (keys) and probabilities for each state at the end of the Markov chain (time equals inf)(values).
     :rtype: Numba typed dictionary
     """
-    print("Starting run_markov_chain_ABC...", flush=True)
+    # print("Starting run_markov_chain_ABC...", flush=True)
     # if ray.is_initialized():
     #    print("Ray is already initialized!", flush=True)
     # else:
@@ -588,7 +588,7 @@ def run_markov_chain_ABC(
         exponential_time = expm(trans_mat * times[step])
         og_keys = list(prob_dict.keys())
         for path in og_keys:
-            print("Path", path, flush=True)
+            # print("Path", path, flush=True)
             prob_mats = np.zeros((324, 1, 203), dtype=np.float64)
             vl_prob_mats = np.zeros((324, 1, 203), dtype=np.float64)
             omega_masks_start = np.zeros((324, 203, 203), dtype=np.float64)
@@ -641,7 +641,7 @@ def run_markov_chain_ABC(
                     ):
                         continue
                     else:
-                        print("match_found", flush=True)
+                        # print("match_found", flush=True)
                         new_key = (
                             l_tuple,
                             r_tuple,
@@ -734,7 +734,7 @@ def run_markov_chain_ABC(
                 omega_masks_end,
                 result_idx,
             )
-            print(f"added_everything for path{path}")
+            # print(f"added_everything for path{path}")
             for i in range(result_idx):
                 prob_dict[
                     (
@@ -770,7 +770,7 @@ def run_markov_chain_ABC(
     prob_dict_sum = {}
 
     for path in og_keys:
-        print("Deepest", flush=True)
+        # print("Deepest", flush=True)
         (l_path, r_path) = path
         acc_prob_mats_noabs = np.zeros((324, 1, 201), dtype=np.float64)
         deepest_keys_acc_array = np.zeros((324, 9, 6), dtype=np.int64)
