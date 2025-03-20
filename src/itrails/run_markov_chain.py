@@ -714,7 +714,7 @@ def run_markov_chain_ABC(
                             omega_masks_end[result_idx] = np.diag(omega_end_mask)
                             keys[result_idx] = new_row
                             result_idx += 1
-
+            print("Matches finished", flush=True)
             flattened_keys, flattened_results, total_valid = vanloan_parallel_inner(
                 vl_idx,
                 times[step],
