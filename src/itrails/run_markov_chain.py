@@ -576,15 +576,15 @@ def run_markov_chain_ABC(
     :return: Updated dictionary of each path (keys) and probabilities for each state at the end of the Markov chain (time equals inf)(values).
     :rtype: Numba typed dictionary
     """
-    print("Starting run_markov_chain_ABC...")
+    print("Starting run_markov_chain_ABC...", flush=True)
     if ray.is_initialized():
-        print("Ray is already initialized!")
+        print("Ray is already initialized!", flush=True)
     else:
-        print("Initializing Ray...")
+        print("Initializing Ray...", flush=True)
         ray.init(ignore_reinit_error=True)
-    print("After Ray initialization")
+    print("After Ray initialization", flush=True)
     for step in range(n_int_ABC - 1):
-        print("Step", step)
+        print("Step", step, flush=True)
         exponential_time = expm(trans_mat * times[step])
         og_keys = list(prob_dict.keys())
         for path in og_keys:
@@ -767,7 +767,7 @@ def run_markov_chain_ABC(
     prob_dict_sum = {}
 
     for path in og_keys:
-        print("Deepest")
+        print("Deepest", flush=True)
         (l_path, r_path) = path
         acc_prob_mats_noabs = np.zeros((324, 1, 201), dtype=np.float64)
         deepest_keys_acc_array = np.zeros((324, 9, 6), dtype=np.int64)
