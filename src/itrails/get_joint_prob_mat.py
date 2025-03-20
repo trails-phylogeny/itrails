@@ -7,7 +7,8 @@ import numpy as np
 from itrails.combine_states import combine_states_wrapper
 from itrails.cutpoints import cutpoints_AB, cutpoints_ABC, get_times
 from itrails.expm import expm
-from itrails.run_markov_chain import run_markov_chain_AB, run_markov_chain_ABC
+from itrails.run_markov_chain_AB import run_markov_chain_AB
+from itrails.run_markov_chain_ABC import run_markov_chain_ABC
 from itrails.trans_mat import get_trans_mat, wrapper_state_general
 
 
