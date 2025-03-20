@@ -3,6 +3,7 @@ import multiprocessing as mp
 import os
 import sys
 
+import ray
 import yaml
 
 from itrails.cutpoints import cutpoints_ABC
@@ -480,6 +481,7 @@ def main():
         raise ValueError("Error reading MAF alignment file.")
 
     # Run optimization
+    ray.init(ignore_reinit_error=True)
     optimizer(
         optim_variables=optim_variables,
         optim_list=optim_list,

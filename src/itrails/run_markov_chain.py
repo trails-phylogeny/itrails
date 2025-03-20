@@ -206,8 +206,8 @@ def vanloan_parallel_inner(
     omega_dict_serialized = pickle.dumps(omega_dict_python)
 
     # Initialize Ray
-    if not ray.is_initialized():
-        ray.init()
+    # if not ray.is_initialized():
+    #    ray.init()
 
     # Submit tasks for each valid (i, j)
     tasks = []
@@ -333,8 +333,8 @@ def deepest_parallel_inner(
     omega_dict_noabs_serialized = pickle.dumps(omega_dict_python)
 
     # Initialize Ray
-    if not ray.is_initialized():
-        ray.init()
+    # if not ray.is_initialized():
+    #    ray.init()
     tasks = []
     for i in range(deepest_idx):
         key_array = deepest_keys_acc_array[i]
@@ -577,12 +577,12 @@ def run_markov_chain_ABC(
     :rtype: Numba typed dictionary
     """
     print("Starting run_markov_chain_ABC...", flush=True)
-    if ray.is_initialized():
-        print("Ray is already initialized!", flush=True)
-    else:
-        print("Initializing Ray...", flush=True)
-        ray.init(ignore_reinit_error=True)
-    print("After Ray initialization", flush=True)
+    # if ray.is_initialized():
+    #    print("Ray is already initialized!", flush=True)
+    # else:
+    #    print("Initializing Ray...", flush=True)
+    #    ray.init(ignore_reinit_error=True)
+    # print("After Ray initialization", flush=True)
     for step in range(n_int_ABC - 1):
         print("Step", step, flush=True)
         exponential_time = expm(trans_mat * times[step])
