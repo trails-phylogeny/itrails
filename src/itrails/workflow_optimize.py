@@ -3,13 +3,12 @@ import os
 from math import inf
 
 import yaml
-from yaml_helpers import FlowSeq
 
 from itrails.cutpoints import cutpoints_ABC
 from itrails.ncpu import N_CPU, update_n_cpu
 from itrails.optimizer import optimizer
 from itrails.read_data import maf_parser
-from itrails.yaml_helpers import load_config
+from itrails.yaml_helpers import FlowSeq, load_config
 
 ## URL of the example MAF file on Zenodo
 # EXAMPLE_MAF_URL = "https://zenodo.org/records/14930374/files/example_alignment.maf"
