@@ -446,12 +446,11 @@ def main():
     }
     with open(best_model_yaml, "w") as f:
         yaml.dump(starting_best_model, f, default_flow_style=True)
-    # Read MAF alignment
+
     maf_alignment = maf_parser(maf_path, species_list)
     if maf_alignment is None:
         raise ValueError("Error reading MAF alignment file.")
 
-    # Run optimization
     print("Running optimization...")
     optimizer(
         optim_variables=optim_variables,
