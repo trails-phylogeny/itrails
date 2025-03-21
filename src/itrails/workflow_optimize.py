@@ -1,28 +1,18 @@
 import argparse
 import os
-import sys
 from math import inf
 
 import yaml
+from yaml_helpers import FlowSeq
 
 from itrails.cutpoints import cutpoints_ABC
 from itrails.ncpu import N_CPU, update_n_cpu
 from itrails.optimizer import optimizer
 from itrails.read_data import maf_parser
+from itrails.yaml_helpers import load_config
 
 ## URL of the example MAF file on Zenodo
 # EXAMPLE_MAF_URL = "https://zenodo.org/records/14930374/files/example_alignment.maf"
-
-
-def load_config(config_file):
-    """Load the YAML configuration file."""
-    try:
-        with open(config_file, "r") as f:
-            config = yaml.safe_load(f)
-        return config
-    except Exception as e:
-        print(f"Error loading config file: {e}", file=sys.stderr)
-        sys.exit(1)
 
 
 def main():
@@ -427,15 +417,20 @@ def main():
     }
 
     starting_bounds = {
-        param: [optim_dict[param], *bound_dict[param]] for param in optim_variables
+        param: FlowSeq([optim_dict[param], *bound_dict[param]])
+        for param in optim_variables
     }
     starting_params = {
         "fixed_parameters": filtered_fixed_dict,
         "optimized_parameters": starting_bounds,
         "settings": settings,
     }
+    if "species_list" in starting_params["settings"]:
+        starting_params["settings"]["species_list"] = FlowSeq(
+            starting_params["settings"]["species_list"]
+        )
     with open(starting_params_yaml, "w") as f:
-        yaml.dump(starting_params, f, default_flow_style=True)
+        yaml.dump(starting_params, f, default_flow_style=False)
 
     best_model_yaml = os.path.join(output_path, "best_model.yaml")
     starting_best_model = {
@@ -445,7 +440,7 @@ def main():
         "settings": settings,
     }
     with open(best_model_yaml, "w") as f:
-        yaml.dump(starting_best_model, f, default_flow_style=True)
+        yaml.dump(starting_best_model, f)
 
     maf_alignment = maf_parser(maf_path, species_list)
     if maf_alignment is None:
