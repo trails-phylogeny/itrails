@@ -3,6 +3,7 @@ import pickle
 import numpy as np
 from joblib import Parallel, delayed
 
+import itrails.ncpu as ncpu
 from itrails.deepest_ti import deep_identify_wrapper, deepest_ti
 from itrails.expm import expm
 from itrails.helper_omegas import remove_absorbing_indices, translate_to_omega
@@ -38,49 +39,17 @@ def compute_matrices_start_end_wrapper(
     omega_start_masks,
     omega_end_masks,
     num_combinations,
-    n_jobs=1,
 ):
     """
     Parallel wrapper using joblib to compute compute_matrix_start_end over all combinations.
     """
-    results = Parallel(n_jobs=n_jobs)(
+    results = Parallel(n_jobs=ncpu.N_CPU)(
         delayed(compute_matrix_start_end)(
             prob_mats[i], exponential_time, omega_start_masks[i], omega_end_masks[i]
         )
         for i in range(num_combinations)
     )
     return np.array(results)
-
-
-""" 
-def compute_matrices_start_end(
-    prob_mats, exponential_time, omega_start_masks, omega_end_masks, num_combinations
-):
-    
-    Wrapper that parallelizes the computation of all the possibilities after the first step.
-
-    :param prob_mats: 3D array of probabilities, number in the first dimension is the number of combinations and contains a 2D array of probabilities.
-    :type prob_mats: Numpy array
-    :param exponential_time: Exponential matrix of transition matrix multiplied by time.
-    :type exponential_time: Numpy array
-    :param omega_start_masks: 3D array to mask the matrix based on initial omega, number in the first dimension is the number of combinations and contains a 2D array of booleans.
-    :type omega_start_masks: Numpy array
-    :param omega_end_masks: 3D array to mask the matrix based on final omega, number in the first dimension is the number of combinations and contains a 2D array of booleans.
-    :type omega_end_masks: Numpy array
-    :param num_combinations: Total number of operations.
-    :type num_combinations: int
-    :return: Array of results
-    :rtype: Numpy array
-    
-    results = []
-    for i in range(num_combinations):
-        result = compute_matrix_start_end.remote(
-            prob_mats[i], exponential_time, omega_start_masks[i], omega_end_masks[i]
-        )
-        results.append(result)
-    results = ray.get(results)
-    return np.array(results)
- """
 
 
 def vanloan_worker_inner(
@@ -150,7 +119,6 @@ def vanloan_parallel_inner(
     vl_omega_masks_start,
     vl_omega_masks_end,
     vl_prob_mats,
-    n_jobs=1,
 ):
     """
     Parallel wrapper using joblib for the vanloan_worker_inner tasks.
@@ -187,7 +155,7 @@ def vanloan_parallel_inner(
             )
 
     # Run tasks in parallel
-    results = Parallel(n_jobs=n_jobs)(
+    results = Parallel(n_jobs=ncpu.N_CPU)(
         delayed(vanloan_worker_inner)(*args) for args in tasks
     )
 
@@ -259,7 +227,6 @@ def deepest_parallel_inner(
     deepest_paths_acc_array,
     deepest_path_lengths_array,
     acc_prob_mats_noabs,
-    n_jobs=1,
 ):
     """
     Parallel wrapper using joblib for the deepest_worker_inner tasks.
@@ -289,7 +256,7 @@ def deepest_parallel_inner(
                 )
             )
 
-    results = Parallel(n_jobs=n_jobs)(
+    results = Parallel(n_jobs=ncpu.N_CPU)(
         delayed(deepest_worker_inner)(*args) for args in tasks
     )
 
@@ -314,7 +281,6 @@ def run_markov_chain_ABC(
     n_int_ABC,
     species,
     absorbing_state=(7, 7),
-    n_jobs=1,
 ):
     """
     Function that runs the Discrete Time Markov chain for species A, B, and C.
@@ -340,19 +306,10 @@ def run_markov_chain_ABC(
     :return: Updated dictionary of each path (keys) and probabilities for each state at the end of the Markov chain (time equals inf)(values).
     :rtype: Numba typed dictionary
     """
-    # print("Starting run_markov_chain_ABC...", flush=True)
-    # if ray.is_initialized():
-    #    print("Ray is already initialized!", flush=True)
-    # else:
-    #    print("Initializing Ray...", flush=True)
-    #    ray.init(ignore_reinit_error=True)
-    # print("After Ray initialization", flush=True)
     for step in range(n_int_ABC - 1):
-        print("Step", step, flush=True)
         exponential_time = expm(trans_mat * times[step])
         og_keys = list(prob_dict.keys())
         for path in og_keys:
-            # print("Path", path, flush=True)
             prob_mats = np.zeros((324, 1, 203), dtype=np.float64)
             vl_prob_mats = np.zeros((324, 1, 203), dtype=np.float64)
             omega_masks_start = np.zeros((324, 203, 203), dtype=np.float64)
@@ -405,7 +362,6 @@ def run_markov_chain_ABC(
                     ):
                         continue
                     else:
-                        # print("match_found", flush=True)
                         new_key = (
                             l_tuple,
                             r_tuple,
@@ -478,9 +434,8 @@ def run_markov_chain_ABC(
                             omega_masks_end[result_idx] = np.diag(omega_end_mask)
                             keys[result_idx] = new_row
                             result_idx += 1
-            print("Matches finished", flush=True)
             flattened_keys, flattened_results, total_valid = vanloan_parallel_inner(
-                vl_idx,  # computed previously in your code
+                vl_idx,
                 times[step],
                 trans_mat,
                 omega_dict,
@@ -489,7 +444,6 @@ def run_markov_chain_ABC(
                 vl_omega_masks_start,
                 vl_omega_masks_end,
                 vl_prob_mats,
-                n_jobs=n_jobs,
             )
             results_novl = compute_matrices_start_end_wrapper(
                 prob_mats,
@@ -497,9 +451,7 @@ def run_markov_chain_ABC(
                 omega_masks_start,
                 omega_masks_end,
                 result_idx,
-                n_jobs=n_jobs,
             )
-            # print(f"added_everything for path{path}")
             for i in range(result_idx):
                 prob_dict[
                     (
@@ -535,7 +487,6 @@ def run_markov_chain_ABC(
     prob_dict_sum = {}
 
     for path in og_keys:
-        # print("Deepest", flush=True)
         (l_path, r_path) = path
         acc_prob_mats_noabs = np.zeros((324, 1, 201), dtype=np.float64)
         deepest_keys_acc_array = np.zeros((324, 9, 6), dtype=np.int64)
@@ -787,7 +738,6 @@ def run_markov_chain_ABC(
             deepest_paths_acc_array,
             deepest_path_lengths_array,
             acc_prob_mats_noabs,
-            n_jobs=n_jobs,
         )
 
         for i in range(total_valid):

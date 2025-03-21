@@ -2,6 +2,8 @@
 import numba as nb
 import numpy as np
 
+import itrails.ncpu as ncpu
+
 # Functions
 from itrails.combine_states import combine_states_wrapper
 from itrails.cutpoints import cutpoints_AB, cutpoints_ABC, get_times
@@ -28,7 +30,6 @@ def get_joint_prob_mat(
     coal_ABC,
     n_int_AB,
     n_int_ABC,
-    n_cpu=1,
     cut_AB="standard",
     cut_ABC="standard",
 ):
@@ -104,7 +105,7 @@ def get_joint_prob_mat(
         omega_dict_2,
         pi_AB,
         n_int_AB,
-        n_jobs=n_cpu,
+        n_jobs=ncpu.N_CPU,
     )
     print("After run_MC_AB", flush=True)
     pi_ABC = combine_states_wrapper(
@@ -136,7 +137,7 @@ def get_joint_prob_mat(
         n_int_ABC,
         species=3,
         absorbing_state=(7, 7),
-        n_jobs=n_cpu,
+        n_jobs=ncpu.N_CPU,
     )
     print("After run_MC_ABC", flush=True)
     return final_ABC

@@ -5,11 +5,12 @@ import time
 
 import numpy as np
 import yaml
+from joblib import Parallel, delayed
 from numba import njit
 from numba.typed import List
-from ray.util.multiprocessing import Pool
 from scipy.optimize import minimize
 
+import itrails.ncpu as ncpu
 from itrails.cutpoints import cutpoints_ABC
 from itrails.get_emission_prob_mat import (
     get_emission_prob_mat,
@@ -42,6 +43,46 @@ def forward_loglik_par(a, b, pi, V, order):
 
 def loglik_wrapper_par(a, b, pi, V_lst):
     """
+    Log-likelihood wrapper (parallelized) using joblib.
+
+    Parameters
+    ----------
+    a : numpy array
+        Transition probability matrix.
+    b : numpy array
+        Emission probability matrix.
+    pi : numpy array
+        Vector of starting probabilities for the hidden states.
+    V_lst : list of numpy arrays
+        List of observed states (as integer indices).
+
+    Returns
+    -------
+    acc : float
+        The sum of log-likelihood values over all items in V_lst.
+    """
+    # Build the 'order' list using get_idx_state (assuming it's defined at top-level).
+    order = [get_idx_state(i) for i in range(624 + 1)]
+
+    # Build the list of argument tuples
+    pool_lst = [(a, b, pi, V, order) for V in V_lst]
+
+    # Use ncpus from your global configuration module
+    ncpus = ncpu.N_CPU
+
+    # Run forward_loglik_par in parallel over all argument tuples
+    results = Parallel(n_jobs=ncpus)(
+        delayed(forward_loglik_par)(*args) for args in pool_lst
+    )
+
+    # Sum up all the results and return the total
+    acc = sum(results)
+    return acc
+
+
+""" 
+def loglik_wrapper_par(a, b, pi, V_lst):
+    
     Log-likelihood wrapper (parallelized)
 
     Parameters
@@ -54,7 +95,7 @@ def loglik_wrapper_par(a, b, pi, V_lst):
         Vector of starting probabilities of the hidden states
     V : list of numpy arrays
         List of vectors of observed states, as integer indices
-    """
+    
     order = list()
     for i in range(624 + 1):
         order.append(get_idx_state(i))
@@ -71,10 +112,44 @@ def loglik_wrapper_par(a, b, pi, V_lst):
     for i in res.get():
         acc += i
     return acc
+ """
 
 
 def loglik_wrapper_par_new_method(a, b, pi, V_lst):
     """
+    Log-likelihood wrapper (parallelized) using joblib.
+
+    Parameters:
+      a : numpy array
+          Transition probability matrix
+      b : numpy array
+          Emission probability matrix
+      pi : numpy array
+          Vector of starting probabilities of the hidden states
+      V_lst : list of numpy arrays
+          List of observed states (as integer indices)
+
+    Returns:
+      The sum of the log-likelihood values computed for each V in V_lst.
+    """
+    order = [get_idx_state_new_method(i) for i in range(125)]
+    pool_args = [(a, b, pi, V, order) for V in V_lst]
+
+    # Determine number of CPUs to use.
+    ncpus = ncpu.N_CPU
+
+    # Use joblib's Parallel to run forward_loglik_par in parallel.
+    results = Parallel(n_jobs=ncpus)(
+        delayed(forward_loglik_par)(*args) for args in pool_args
+    )
+
+    # Sum up the results.
+    return sum(results)
+
+
+""" 
+def loglik_wrapper_par_new_method(a, b, pi, V_lst):
+    
     Log-likelihood wrapper (parallelized)
 
     Parameters
@@ -87,7 +162,7 @@ def loglik_wrapper_par_new_method(a, b, pi, V_lst):
         Vector of starting probabilities of the hidden states
     V : list of numpy arrays
         List of vectors of observed states, as integer indices
-    """
+    
     order = list()
     for i in range(125):
         order.append(get_idx_state_new_method(i))
@@ -104,6 +179,7 @@ def loglik_wrapper_par_new_method(a, b, pi, V_lst):
     for i in res.get():
         acc += i
     return acc
+ """
 
 
 def loglik_wrapper(a, b, pi, V_lst):
@@ -428,7 +504,6 @@ def trans_emiss_calc(
     r,
     n_int_AB,
     n_int_ABC,
-    n_cpu=1,
     cut_AB="standard",
     cut_ABC="standard",
     tmp_path="./",
@@ -516,7 +591,6 @@ def trans_emiss_calc(
         coal_ABC,
         n_int_AB,
         n_int_ABC,
-        n_cpu,
         cut_AB,
         cut_ABC,
     )
@@ -588,9 +662,7 @@ def trans_emiss_calc(
     return a, b, pi, hidden_names, observed_names
 
 
-def optimization_wrapper(
-    arg_lst, optimized_params, case, d, n_cpu, V_lst, res_name, info
-):
+def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, info):
     best_model_yaml = os.path.join(res_name, "best_model.yaml")
 
     d_copy = d.copy()
@@ -734,7 +806,6 @@ def optimization_wrapper(
         d_copy["r"],
         d_copy["n_int_AB"],
         d_copy["n_int_ABC"],
-        n_cpu,
         "standard",
         "standard",
         info["tmp_path"],
@@ -782,7 +853,6 @@ def optimizer(
     optim_list,
     bounds,
     fixed_params,
-    n_cpu,
     V_lst,
     res_name,
     case,
@@ -833,7 +903,6 @@ def optimizer(
             optim_variables,
             case,
             d_copy,
-            n_cpu,
             V_lst,
             res_name,
             {"Nfeval": 0, "time": time.time(), "tmp_path": tmp_path},

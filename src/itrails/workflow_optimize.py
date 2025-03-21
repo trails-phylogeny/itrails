@@ -1,33 +1,16 @@
 import argparse
-import multiprocessing as mp
 import os
 import sys
 
 import yaml
 
 from itrails.cutpoints import cutpoints_ABC
+from itrails.ncpu import N_CPU, update_n_cpu
 from itrails.optimizer import optimizer
 from itrails.read_data import maf_parser
 
 ## URL of the example MAF file on Zenodo
 # EXAMPLE_MAF_URL = "https://zenodo.org/records/14930374/files/example_alignment.maf"
-
-
-# def download_example_maf(output_dir):
-#    """
-#    Downloads the example MAF file from Zenodo and saves it inside the specified output directory.
-#    """
-#    maf_path = os.path.join(output_dir, "example_alignment.maf")
-#
-#    if not os.path.exists(maf_path):
-#        print(f"Downloading example MAF file from {EXAMPLE_MAF_URL}...")
-#        os.makedirs(output_dir, exist_ok=True)
-#        urllib.request.urlretrieve(EXAMPLE_MAF_URL, maf_path)
-#        print(f"Download complete! File saved at: {maf_path}")
-#    else:
-#        print(f"Example MAF file already exists at: {maf_path}")
-#
-#    return maf_path
 
 
 def load_config(config_file):
@@ -120,23 +103,13 @@ def main():
 
     print(f"Results will be saved to: {output_path}")
 
-    # Retrieve the total number of available CPU cores
-    allocated_cpus = int(os.environ.get("SLURM_JOB_CPUS_PER_NODE", mp.cpu_count()))
-
-    # Get requested number of cores from config; default to available cores
-    requested_cores = config["settings"].get("n_cpu", allocated_cpus)
-
-    # Ensure n_cpu does not exceed available cores
-    n_cpu = min(requested_cores, allocated_cpus)
-
-    # Set environment variables for various libraries
-    os.environ["OMP_NUM_THREADS"] = str(n_cpu)  # Set OpenMP threads
-    os.environ["MKL_NUM_THREADS"] = str(n_cpu)  # Set MKL threads
-    os.environ["NUMEXPR_NUM_THREADS"] = str(n_cpu)  # Set NumExpr threads
-    os.environ["RAYON_NUM_THREADS"] = str(n_cpu)  # Set Rayon threads
-    os.environ["RAY_NUM_THREADS"] = str(n_cpu)  # Limits Ray's CPU usage
-
-    print(f"Using {n_cpu} CPU cores (out of {allocated_cpus} available).")
+    # Get user-requested CPU count from the configuration, if present.
+    requested_cores = config["settings"].get("n_cpu")
+    if requested_cores is not None:
+        update_n_cpu(requested_cores)
+    else:
+        # If not specified, we leave N_CPU as the default
+        print(f"No CPU count specified in config; using default {N_CPU} cores.")
 
     # Extract fixed parameters
     fixed_params = config["fixed_parameters"]
@@ -144,7 +117,7 @@ def main():
     settings = config["settings"]
     settings["output_name"] = output_path
     settings["input_maf"] = maf_path
-    settings["n_cpu"] = n_cpu
+    settings["n_cpu"] = N_CPU
     species_list = settings["species_list"]
     mu = float(fixed_params["mu"])
     n_int_AB = settings["n_int_AB"]
@@ -260,12 +233,6 @@ def main():
     for param in params:
         if param in fixed_params and param in optimized_params:
             raise ValueError(f"Parameter '{param}' cannot be both fixed and optimized.")
-        if param == "t_2":
-            t_2 = (
-                optimized_params[param][0]
-                if param in optimized_params
-                else fixed_params[param]
-            )
         if param in fixed_params:
             fixed_dict[param] = fixed_params[param]
         elif param in optimized_params:
@@ -486,7 +453,6 @@ def main():
         optim_list=optim_list,
         bounds=bounds_list,
         fixed_params=fixed_dict,
-        n_cpu=n_cpu,
         V_lst=maf_alignment,
         res_name=output_path,
         case=case,
