@@ -428,6 +428,7 @@ def trans_emiss_calc(
     r,
     n_int_AB,
     n_int_ABC,
+    n_cpu=1,
     cut_AB="standard",
     cut_ABC="standard",
     tmp_path="./",
@@ -515,6 +516,7 @@ def trans_emiss_calc(
         coal_ABC,
         n_int_AB,
         n_int_ABC,
+        n_cpu,
         cut_AB,
         cut_ABC,
     )
@@ -586,7 +588,9 @@ def trans_emiss_calc(
     return a, b, pi, hidden_names, observed_names
 
 
-def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, info):
+def optimization_wrapper(
+    arg_lst, optimized_params, case, d, n_cpu, V_lst, res_name, info
+):
     best_model_yaml = os.path.join(res_name, "best_model.yaml")
 
     d_copy = d.copy()
@@ -730,6 +734,7 @@ def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, in
         d_copy["r"],
         d_copy["n_int_AB"],
         d_copy["n_int_ABC"],
+        n_cpu,
         "standard",
         "standard",
         info["tmp_path"],
@@ -777,6 +782,7 @@ def optimizer(
     optim_list,
     bounds,
     fixed_params,
+    n_cpu,
     V_lst,
     res_name,
     case,
@@ -827,6 +833,7 @@ def optimizer(
             optim_variables,
             case,
             d_copy,
+            n_cpu,
             V_lst,
             res_name,
             {"Nfeval": 0, "time": time.time(), "tmp_path": tmp_path},

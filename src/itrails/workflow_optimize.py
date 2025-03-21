@@ -121,22 +121,22 @@ def main():
     print(f"Results will be saved to: {output_path}")
 
     # Retrieve the total number of available CPU cores
-    available_cores = mp.cpu_count()
+    allocated_cpus = int(os.environ.get("SLURM_JOB_CPUS_PER_NODE", mp.cpu_count()))
 
     # Get requested number of cores from config; default to available cores
-    requested_cores = config["settings"].get("num_cpu", available_cores)
+    requested_cores = config["settings"].get("n_cpu", allocated_cpus)
 
-    # Ensure num_cpu does not exceed available cores
-    num_cpu = min(requested_cores, available_cores)
+    # Ensure n_cpu does not exceed available cores
+    n_cpu = min(requested_cores, allocated_cpus)
 
     # Set environment variables for various libraries
-    os.environ["OMP_NUM_THREADS"] = str(num_cpu)  # Set OpenMP threads
-    os.environ["MKL_NUM_THREADS"] = str(num_cpu)  # Set MKL threads
-    os.environ["NUMEXPR_NUM_THREADS"] = str(num_cpu)  # Set NumExpr threads
-    os.environ["RAYON_NUM_THREADS"] = str(num_cpu)  # Set Rayon threads
-    os.environ["RAY_NUM_THREADS"] = str(num_cpu)  # Limits Ray's CPU usage
+    os.environ["OMP_NUM_THREADS"] = str(n_cpu)  # Set OpenMP threads
+    os.environ["MKL_NUM_THREADS"] = str(n_cpu)  # Set MKL threads
+    os.environ["NUMEXPR_NUM_THREADS"] = str(n_cpu)  # Set NumExpr threads
+    os.environ["RAYON_NUM_THREADS"] = str(n_cpu)  # Set Rayon threads
+    os.environ["RAY_NUM_THREADS"] = str(n_cpu)  # Limits Ray's CPU usage
 
-    print(f"Using {num_cpu} CPU cores (out of {available_cores} available).")
+    print(f"Using {n_cpu} CPU cores (out of {allocated_cpus} available).")
 
     # Extract fixed parameters
     fixed_params = config["fixed_parameters"]
@@ -144,7 +144,7 @@ def main():
     settings = config["settings"]
     settings["output_name"] = output_path
     settings["input_maf"] = maf_path
-    settings["num_cpu"] = num_cpu
+    settings["n_cpu"] = n_cpu
     species_list = settings["species_list"]
     mu = float(fixed_params["mu"])
     n_int_AB = settings["n_int_AB"]
@@ -486,6 +486,7 @@ def main():
         optim_list=optim_list,
         bounds=bounds_list,
         fixed_params=fixed_dict,
+        n_cpu=n_cpu,
         V_lst=maf_alignment,
         res_name=output_path,
         case=case,

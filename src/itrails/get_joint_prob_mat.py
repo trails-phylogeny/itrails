@@ -1,7 +1,6 @@
 # Packages
 import numba as nb
 import numpy as np
-import ray
 
 # Functions
 from itrails.combine_states import combine_states_wrapper
@@ -29,6 +28,7 @@ def get_joint_prob_mat(
     coal_ABC,
     n_int_AB,
     n_int_ABC,
+    n_cpu=1,
     cut_AB="standard",
     cut_ABC="standard",
 ):
@@ -98,19 +98,15 @@ def get_joint_prob_mat(
     inverted_omega_nonrev_counts[1] = nb.typed.List([3])
 
     print("Before run_MC_AB", flush=True)
-    ray.init(
-        ignore_reinit_error=True,
-        local_mode=True,
-    )
     final_AB = run_markov_chain_AB(
         trans_mat_ab,
         times_AB,
         omega_dict_2,
         pi_AB,
         n_int_AB,
+        n_jobs=n_cpu,
     )
     print("After run_MC_AB", flush=True)
-    ray.shutdown()
     pi_ABC = combine_states_wrapper(
         number_dict_AB,
         number_dict_C,
@@ -129,13 +125,7 @@ def get_joint_prob_mat(
     inverted_omega_nonrev_counts[0] = nb.typed.List([0])
     inverted_omega_nonrev_counts[1] = nb.typed.List([3, 5, 6])
     inverted_omega_nonrev_counts[2] = nb.typed.List([7])
-    # if ray.is_initialized():
-    #    ray.shutdown()
     print("Before run_MC_ABC", flush=True)
-    ray.init(
-        ignore_reinit_error=True,
-        local_mode=True,
-    )
     final_ABC = run_markov_chain_ABC(
         trans_mat_abc,
         times_ABC,
@@ -146,6 +136,7 @@ def get_joint_prob_mat(
         n_int_ABC,
         species=3,
         absorbing_state=(7, 7),
+        n_jobs=n_cpu,
     )
     print("After run_MC_ABC", flush=True)
     return final_ABC

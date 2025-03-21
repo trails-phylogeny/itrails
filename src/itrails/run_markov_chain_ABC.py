@@ -1,7 +1,7 @@
 import pickle
 
 import numpy as np
-import ray
+from joblib import Parallel, delayed
 
 from itrails.deepest_ti import deep_identify_wrapper, deepest_ti
 from itrails.expm import expm
@@ -9,7 +9,6 @@ from itrails.helper_omegas import remove_absorbing_indices, translate_to_omega
 from itrails.vanloan import vanloan, vanloan_identify_wrapper
 
 
-@ray.remote
 def compute_matrix_start_end(
     prob_mat, exponential_time, omega_start_mask, omega_end_mask
 ):
@@ -33,10 +32,31 @@ def compute_matrix_start_end(
     return result
 
 
+def compute_matrices_start_end_wrapper(
+    prob_mats,
+    exponential_time,
+    omega_start_masks,
+    omega_end_masks,
+    num_combinations,
+    n_jobs=1,
+):
+    """
+    Parallel wrapper using joblib to compute compute_matrix_start_end over all combinations.
+    """
+    results = Parallel(n_jobs=n_jobs)(
+        delayed(compute_matrix_start_end)(
+            prob_mats[i], exponential_time, omega_start_masks[i], omega_end_masks[i]
+        )
+        for i in range(num_combinations)
+    )
+    return np.array(results)
+
+
+""" 
 def compute_matrices_start_end(
     prob_mats, exponential_time, omega_start_masks, omega_end_masks, num_combinations
 ):
-    """
+    
     Wrapper that parallelizes the computation of all the possibilities after the first step.
 
     :param prob_mats: 3D array of probabilities, number in the first dimension is the number of combinations and contains a 2D array of probabilities.
@@ -51,7 +71,7 @@ def compute_matrices_start_end(
     :type num_combinations: int
     :return: Array of results
     :rtype: Numpy array
-    """
+    
     results = []
     for i in range(num_combinations):
         result = compute_matrix_start_end.remote(
@@ -60,9 +80,9 @@ def compute_matrices_start_end(
         results.append(result)
     results = ray.get(results)
     return np.array(results)
+ """
 
 
-@ray.remote
 def vanloan_worker_inner(
     idx_i,
     idx_j,
@@ -130,40 +150,16 @@ def vanloan_parallel_inner(
     vl_omega_masks_start,
     vl_omega_masks_end,
     vl_prob_mats,
+    n_jobs=1,
 ):
     """
-    Wrapper function that parallelizes the computation of all the possibilities where multiple coalescents happen in a same time interval starting from a certain state (Van Loan).
-
-    :param vl_idx: Total number of cases to parallelize.
-    :type vl_idx: int
-    :param time: End time of the interval.
-    :type time: float
-    :param trans_mat: Transition matrix.
-    :type trans_mat: Numpy array
-    :param omega_dict: Dictionary of omega indices (key) and vector of booleans where each key has the states (value).
-    :type omega_dict: Numba typed dictionary
-    :param vl_keys_acc_array: Array that accumulates, in each index of the first dimension, the collection of keys for each case.
-    :type vl_keys_acc_array: Numpy array
-    :param vl_paths_acc_array: Array that accumulates, in each index of the first dimension, the collection of paths for each case.
-    :type vl_paths_acc_array: Numpy array
-    :param vl_omega_masks_start: 3D array to mask the matrix based on initial omega, number in the first dimension is each case and contains a 2D array of booleans.
-    :type vl_omega_masks_start: Numpy array
-    :param vl_omega_masks_end: 3D array to mask the matrix based on final omega, number in the first dimension is each case and contains a 2D array of booleans.
-    :type vl_omega_masks_end: Numpy array
-    :param vl_prob_mats: Array of starting probabilities for each case at the start of the time interval.
-    :type vl_prob_mats: Numpy array
-    :return: Array of keys, Array of probability matrices summed over every possible transitions for a subpath, Total number of valid cases.
-    :rtype: Tuple(Numpy array, Numpy array, int)
+    Parallel wrapper using joblib for the vanloan_worker_inner tasks.
     """
+    # Serialize the dictionary once
     omega_dict_python = dict(omega_dict)
-
     omega_dict_serialized = pickle.dumps(omega_dict_python)
 
-    # Initialize Ray
-    # if not ray.is_initialized():
-    #    ray.init()
-
-    # Submit tasks for each valid (i, j)
+    # Build a list of arguments for each task
     tasks = []
     for i in range(vl_idx):
         key_array = vl_keys_acc_array[i]
@@ -173,24 +169,27 @@ def vanloan_parallel_inner(
         prob_mat = vl_prob_mats[i]
 
         for j, key in enumerate(key_array):
-            if key[-1] == 0:  # Stop at invalid keys
+            if key[-1] == 0:  # stop if invalid key encountered
                 break
-            task = vanloan_worker_inner.remote(
-                i,
-                j,
-                trans_mat,
-                omega_dict_serialized,
-                key,
-                time,
-                paths_array[j],
-                omega_start_mask,
-                omega_end_mask,
-                prob_mat,
+            tasks.append(
+                (
+                    i,
+                    j,
+                    trans_mat,
+                    omega_dict_serialized,
+                    key,
+                    time,
+                    paths_array[j],
+                    omega_start_mask,
+                    omega_end_mask,
+                    prob_mat,
+                )
             )
-            tasks.append(task)
 
-    # Gather results
-    results = ray.get(tasks)
+    # Run tasks in parallel
+    results = Parallel(n_jobs=n_jobs)(
+        delayed(vanloan_worker_inner)(*args) for args in tasks
+    )
 
     # Combine results
     total_valid = len(results)
@@ -204,7 +203,6 @@ def vanloan_parallel_inner(
     return flattened_keys, flattened_results, total_valid
 
 
-@ray.remote
 def deepest_worker_inner(
     idx_i,
     idx_j,
@@ -261,60 +259,40 @@ def deepest_parallel_inner(
     deepest_paths_acc_array,
     deepest_path_lengths_array,
     acc_prob_mats_noabs,
+    n_jobs=1,
 ):
     """
-    Wrapper function that parallelizes the computation of all the possibilities where multiple coalescents happen in the last time interval (Deepest TI).
-
-    :param deepest_idx: Total number of cases to parallelize.
-    :type deepest_idx: int
-    :param trans_mat_noabs: Transition matrix without absorbing states.
-    :type trans_mat_noabs: Numpy array
-    :param omega_dict_noabs: Dictionary of omega indices (key) and vector of booleans where each key has the states (value), lacks absorbing states.
-    :type omega_dict_noabs: Numba typed dictionary
-    :param deepest_keys_acc_array: Array that accumulates, in each index of the first dimension, the collection of keys for each case.
-    :type deepest_keys_acc_array: Numpy array
-    :param deepest_paths_acc_array: Array that accumulates, in each index of the first dimension, the collection of paths for each case.
-    :type deepest_paths_acc_array: Numpy array
-    :param deepest_path_lengths_array: Array that accumulates, in each index of the first dimension, the lengths of each path for each case.
-    :type deepest_path_lengths_array: Numpy array
-    :param acc_prob_mats_noabs: Array of starting probabilities for each case at the start of the time interval without absorbing states.
-    :type acc_prob_mats_noabs: Numpy array
-    :return: Array of keys, Array of probability matrices summed over every possible transitions for a subpath, Total number of valid cases.
-    :rtype: Tuple(Numpy array, Numpy array, int)
+    Parallel wrapper using joblib for the deepest_worker_inner tasks.
     """
     omega_dict_python = dict(omega_dict_noabs)
-
     omega_dict_noabs_serialized = pickle.dumps(omega_dict_python)
 
-    # Initialize Ray
-    # if not ray.is_initialized():
-    #    ray.init()
     tasks = []
     for i in range(deepest_idx):
         key_array = deepest_keys_acc_array[i]
         paths_array = deepest_paths_acc_array[i]
         acc_prob_mat_noabs = acc_prob_mats_noabs[i]
-
         for j, key in enumerate(key_array):
             path_lengths_j = deepest_path_lengths_array[i][j]
             if all(x == 0 for x in key):
                 break
-            task = deepest_worker_inner.remote(
-                i,
-                j,
-                trans_mat_noabs,
-                omega_dict_noabs_serialized,
-                key,
-                paths_array[j][: np.count_nonzero(path_lengths_j)],
-                acc_prob_mat_noabs,
-                path_lengths_j[: np.count_nonzero(path_lengths_j)],
+            tasks.append(
+                (
+                    i,
+                    j,
+                    trans_mat_noabs,
+                    omega_dict_noabs_serialized,
+                    key,
+                    paths_array[j][: np.count_nonzero(path_lengths_j)],
+                    acc_prob_mat_noabs,
+                    path_lengths_j[: np.count_nonzero(path_lengths_j)],
+                )
             )
-            tasks.append(task)
 
-    # Gather results
-    results = ray.get(tasks)
+    results = Parallel(n_jobs=n_jobs)(
+        delayed(deepest_worker_inner)(*args) for args in tasks
+    )
 
-    # Combine results
     total_valid = len(results)
     flattened_results = np.zeros((total_valid, 1, 201))
     flattened_keys = np.zeros((total_valid, 6), dtype=np.int64)
@@ -336,6 +314,7 @@ def run_markov_chain_ABC(
     n_int_ABC,
     species,
     absorbing_state=(7, 7),
+    n_jobs=1,
 ):
     """
     Function that runs the Discrete Time Markov chain for species A, B, and C.
@@ -501,7 +480,7 @@ def run_markov_chain_ABC(
                             result_idx += 1
             print("Matches finished", flush=True)
             flattened_keys, flattened_results, total_valid = vanloan_parallel_inner(
-                vl_idx,
+                vl_idx,  # computed previously in your code
                 times[step],
                 trans_mat,
                 omega_dict,
@@ -510,14 +489,15 @@ def run_markov_chain_ABC(
                 vl_omega_masks_start,
                 vl_omega_masks_end,
                 vl_prob_mats,
+                n_jobs=n_jobs,
             )
-
-            results_novl = compute_matrices_start_end(
+            results_novl = compute_matrices_start_end_wrapper(
                 prob_mats,
                 exponential_time,
                 omega_masks_start,
                 omega_masks_end,
                 result_idx,
+                n_jobs=n_jobs,
             )
             # print(f"added_everything for path{path}")
             for i in range(result_idx):
@@ -807,6 +787,7 @@ def run_markov_chain_ABC(
             deepest_paths_acc_array,
             deepest_path_lengths_array,
             acc_prob_mats_noabs,
+            n_jobs=n_jobs,
         )
 
         for i in range(total_valid):

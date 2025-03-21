@@ -1,11 +1,10 @@
 import numpy as np
-import ray
+from joblib import Parallel, delayed
 
 from itrails.expm import expm
 from itrails.helper_omegas import translate_to_omega
 
 
-@ray.remote
 def compute_matrix_end(prob_mat, exponential_time, omega_end_mask):
     """
     Helper function that computes the first matrix multiplication, then slices the matrix to get the columns corresponding to the end state.
@@ -24,7 +23,6 @@ def compute_matrix_end(prob_mat, exponential_time, omega_end_mask):
     return result
 
 
-@ray.remote
 def compute_matrix_start_end(
     prob_mat, exponential_time, omega_start_mask, omega_end_mask
 ):
@@ -48,10 +46,28 @@ def compute_matrix_start_end(
     return result
 
 
+def compute_matrices_end_wrapper(
+    prob_mats,
+    exponential_time,
+    omega_end_masks,
+    num_combinations,
+    n_jobs=1,
+):
+    """
+    Parallel wrapper using joblib to compute compute_matrix_start_end over all combinations.
+    """
+    results = Parallel(n_jobs=n_jobs)(
+        delayed(compute_matrix_end)(prob_mats[i], exponential_time, omega_end_masks[i])
+        for i in range(num_combinations)
+    )
+    return np.array(results)
+
+
+""" 
 def compute_matrices_end(
     prob_mats, exponential_time, omega_end_masks, num_combinations
 ):
-    """
+    
     Wrapper that parallelizes the computation of all the possibilities within the first step.
 
     :param prob_mats: 3D array of probabilities, number in the first dimension is the number of combinations and contains a 2D array of probabilities.
@@ -64,7 +80,7 @@ def compute_matrices_end(
     :type num_combinations: int
     :return: Array of results
     :rtype: Numpy array
-    """
+    
     results = []
     for i in range(num_combinations):
         result = compute_matrix_end.remote(
@@ -73,12 +89,34 @@ def compute_matrices_end(
         results.append(result)
     results = ray.get(results)
     return np.array(results)
+ """
 
 
+def compute_matrices_start_end_wrapper(
+    prob_mats,
+    exponential_time,
+    omega_start_masks,
+    omega_end_masks,
+    num_combinations,
+    n_jobs=1,
+):
+    """
+    Parallel wrapper using joblib to compute compute_matrix_start_end over all combinations.
+    """
+    results = Parallel(n_jobs=n_jobs)(
+        delayed(compute_matrix_start_end)(
+            prob_mats[i], exponential_time, omega_start_masks[i], omega_end_masks[i]
+        )
+        for i in range(num_combinations)
+    )
+    return np.array(results)
+
+
+""" 
 def compute_matrices_start_end(
     prob_mats, exponential_time, omega_start_masks, omega_end_masks, num_combinations
 ):
-    """
+    
     Wrapper that parallelizes the computation of all the possibilities after the first step.
 
     :param prob_mats: 3D array of probabilities, number in the first dimension is the number of combinations and contains a 2D array of probabilities.
@@ -93,7 +131,7 @@ def compute_matrices_start_end(
     :type num_combinations: int
     :return: Array of results
     :rtype: Numpy array
-    """
+    
     results = []
     for i in range(num_combinations):
         result = compute_matrix_start_end.remote(
@@ -103,6 +141,8 @@ def compute_matrices_start_end(
     results = ray.get(results)
     return np.array(results)
 
+ """
+
 
 def run_markov_chain_AB(
     trans_mat,
@@ -110,6 +150,7 @@ def run_markov_chain_AB(
     omega_dict,
     prob_dict,
     n_int_AB,
+    n_jobs=1,
 ):
     """
     Function that runs the Discrete Time Markov chain for species A and B.
@@ -174,8 +215,8 @@ def run_markov_chain_AB(
                     keys[result_idx] = np.ascontiguousarray(new_row)
                     result_idx += 1
 
-        results = compute_matrices_end(
-            prob_mats, exponential_time_0, omega_masks_end, result_idx
+        results = compute_matrices_end_wrapper(
+            prob_mats, exponential_time_0, omega_masks_end, result_idx, n_jobs=n_jobs
         )
 
     step += 1
@@ -249,12 +290,13 @@ def run_markov_chain_AB(
                         keys[result_idx] = np.ascontiguousarray(new_row)
                         result_idx += 1
 
-            results = compute_matrices_start_end(
+            results = compute_matrices_start_end_wrapper(
                 prob_mats,
                 exponential_time,
                 omega_masks_start,
                 omega_masks_end,
                 result_idx,
+                n_jobs=n_jobs,
             )
 
             for i in range(result_idx):
