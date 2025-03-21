@@ -1,6 +1,7 @@
 import argparse
 import os
 import sys
+from math import inf
 
 import yaml
 
@@ -405,49 +406,53 @@ def main():
     filtered_fixed_dict["mu"] = mu
 
     starting_params_yaml = os.path.join(output_path, "starting_params.yaml")
-    optim_dict = {vari: optim_list[i] for i, vari in enumerate(optim_variables)}
-    for param, value in optim_dict.items():
-        if param == "r":
-            optim_dict[param] = float(value) * mu
-        else:
-            optim_dict[param] = float(value) / mu
-    bound_dict = {
-        vari: (bounds_list[i][0], bounds_list[i][1])
-        for i, vari in enumerate(optim_variables)
+
+    def adjust_value(value, param, mu):
+        """Adjusts the parameter value based on the parameter name."""
+        value = float(value)
+        return value * mu if param == "r" else value / mu
+
+    def adjust_bounds(bounds, param, mu):
+        """Adjusts the bounds for the parameter based on the parameter name."""
+        lower, upper = float(bounds[0]), float(bounds[1])
+        return [lower * mu, upper * mu] if param == "r" else [lower / mu, upper / mu]
+
+    optim_dict = {
+        param: adjust_value(val, param, mu)
+        for param, val in zip(optim_variables, optim_list)
     }
-    for param, value in bound_dict.items():
-        if param == "r":
-            bound_dict[param] = [float(value[0]) * mu, float(value[1]) * mu]
-        else:
-            bound_dict[param] = [float(value[0]) / mu, float(value[1]) / mu]
+    bound_dict = {
+        param: adjust_bounds(bounds, param, mu)
+        for param, bounds in zip(optim_variables, bounds_list)
+    }
+
+    starting_bounds = {
+        param: [optim_dict[param], *bound_dict[param]] for param in optim_variables
+    }
     starting_params = {
         "fixed_parameters": filtered_fixed_dict,
-        "starting_optimized_parameters": optim_dict,
-        "bounds_optimized_params": bound_dict,
+        "optimized_parameters": starting_bounds,
         "settings": settings,
     }
     with open(starting_params_yaml, "w") as f:
-        yaml.dump(starting_params, f)
+        yaml.dump(starting_params, f, default_flow_style=True)
 
     best_model_yaml = os.path.join(output_path, "best_model.yaml")
     starting_best_model = {
         "fixed_parameters": filtered_fixed_dict,
         "optimized_parameters": {},
-        "results": {"log_likelihood": 0, "iteration": None},
+        "results": {"log_likelihood": -inf, "iteration": None},
         "settings": settings,
     }
     with open(best_model_yaml, "w") as f:
-        yaml.dump(
-            starting_best_model,
-            f,
-        )
+        yaml.dump(starting_best_model, f, default_flow_style=True)
     # Read MAF alignment
     maf_alignment = maf_parser(maf_path, species_list)
     if maf_alignment is None:
         raise ValueError("Error reading MAF alignment file.")
 
     # Run optimization
-    # ray.init(ignore_reinit_error=True)
+    print("Running optimization...")
     optimizer(
         optim_variables=optim_variables,
         optim_list=optim_list,

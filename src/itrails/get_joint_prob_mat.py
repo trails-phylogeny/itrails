@@ -96,7 +96,6 @@ def get_joint_prob_mat(
     inverted_omega_nonrev_counts[0] = nb.typed.List([0])
     inverted_omega_nonrev_counts[1] = nb.typed.List([3])
 
-    print("Before run_MC_AB", flush=True)
     final_AB = run_markov_chain_AB(
         trans_mat_ab,
         times_AB,
@@ -104,7 +103,7 @@ def get_joint_prob_mat(
         pi_AB,
         n_int_AB,
     )
-    print("After run_MC_AB", flush=True)
+
     pi_ABC = combine_states_wrapper(
         number_dict_AB,
         number_dict_C,
@@ -123,7 +122,7 @@ def get_joint_prob_mat(
     inverted_omega_nonrev_counts[0] = nb.typed.List([0])
     inverted_omega_nonrev_counts[1] = nb.typed.List([3, 5, 6])
     inverted_omega_nonrev_counts[2] = nb.typed.List([7])
-    print("Before run_MC_ABC", flush=True)
+
     final_ABC = run_markov_chain_ABC(
         trans_mat_abc,
         times_ABC,
@@ -135,67 +134,4 @@ def get_joint_prob_mat(
         species=3,
         absorbing_state=(7, 7),
     )
-    print("After run_MC_ABC", flush=True)
     return final_ABC
-
-
-""" 
-final_ABC = get_joint_prob_mat(
-    t_A=10,
-    t_B=10,
-    t_AB=20,
-    t_C=20,
-    rho_A=0.3,
-    rho_B=0.4,
-    rho_AB=0.6,
-    rho_C=0.3,
-    rho_ABC=0.4,
-    coal_A=0.6,
-    coal_B=0.4,
-    coal_AB=0.2,
-    coal_C=0.5,
-    coal_ABC=0.4,
-    n_int_AB=3,
-    cut_AB="standard",
-    cut_ABC="standard",
-    n_int_ABC=3,
-)
-
-
-prob = 0
-for path, value in final_ABC.items():
-    print(path, value)
-    prob += value
-
-print(prob)
-print("Precomputing done!")
-
-
-final_ABC = get_joint_prob_mat(
-    t_A=240000,
-    t_B=240000,
-    t_AB=40000,
-    t_C=280000,
-    rho_A=1e-8,
-    rho_B=1e-8,
-    rho_AB=1e-8,
-    rho_C=1e-8,
-    rho_ABC=1e-8,
-    coal_A=1 / 1e-8,
-    coal_B=1 / 1e-8,
-    coal_AB=1 / 1e-8,
-    coal_C=1 / 1e-8,
-    coal_ABC=1 / 1e-8,
-    n_int_AB=3,
-    cut_AB="standard",
-    cut_ABC="standard",
-    n_int_ABC=3,
-)
-
-prob = 0
-for path, value in final_ABC.items():
-    print(path, value)
-    prob += value
-
-print(prob)
- """
