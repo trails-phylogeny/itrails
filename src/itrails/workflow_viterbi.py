@@ -1,14 +1,12 @@
 import argparse
 import os
-from math import inf
-
-import yaml
 
 from itrails.cutpoints import cutpoints_ABC
+from itrails.get_trans_emiss import trans_emiss_calc
 from itrails.ncpu import N_CPU, update_n_cpu
-from itrails.optimizer import optimizer
+from itrails.optimizer import viterbi_wrapper
 from itrails.read_data import maf_parser
-from itrails.yaml_helpers import FlowSeq, load_config
+from itrails.yaml_helpers import load_config
 
 ## URL of the example MAF file on Zenodo
 # EXAMPLE_MAF_URL = "https://zenodo.org/records/14930374/files/example_alignment.maf"
@@ -124,24 +122,11 @@ def main():
     if not isinstance(mu, (int, float)) or mu <= 0:
         raise ValueError("mu must be a positive float or int.")
 
-    # Method validation
-    method_input = settings["method"].lower()
-    allowed_methods = [
-        "nelder-mead",
-        "l-bfgs-b",
-    ]
-    if method_input not in allowed_methods:
-        raise ValueError(f"Method must be one of {allowed_methods}.")
-    else:
-        print(f"Using optimization method: {method_input}")
-        method = method_input
-
     # Validate t1, ta, tb, tc
     # Found values tracking
     found_values = set()
     optim_variables = []
     optim_list = []
-    bounds_list = []
 
     # Function to process parameters
     def process_parameter(param):
@@ -149,22 +134,18 @@ def main():
             raise ValueError(f"Parameter '{param}' cannot be both fixed and optimized.")
         if param in fixed_params:
             found_values.add(param)
-            return fixed_params[param], None, None, True  # Value, min, max, fixed=True
+            return fixed_params[param], True  # Value, min, max, fixed=True
         elif param in optimized_params:
             found_values.add(param)
-            return (
-                optimized_params[param][0],
-                optimized_params[param][1],
-                optimized_params[param][2],
-                False,
-            )  # Value, min, max, fixed=False
-        return None, None, None, None  # Not found
+            return optimized_params[param], False
+            # Value, min, max, fixed=False
+        return None, None  # Not found
 
     # Process each parameter
-    t_1, t_1_min, t_1_max, t_1_fixed = process_parameter("t_1")
-    t_A, t_A_min, t_A_max, t_A_fixed = process_parameter("t_A")
-    t_B, t_B_min, t_B_max, t_B_fixed = process_parameter("t_B")
-    t_C, t_C_min, t_C_max, t_C_fixed = process_parameter("t_C")
+    t_1, t_1_fixed = process_parameter("t_1")
+    t_A, t_A_fixed = process_parameter("t_A")
+    t_B, t_B_fixed = process_parameter("t_B")
+    t_C, t_C_fixed = process_parameter("t_C")
     # Define the set of allowed combinations
     allowed_combinations = {
         frozenset(["t_A", "t_B", "t_C"]),
@@ -190,7 +171,6 @@ def main():
         else:
             optim_variables.append("t_1")
             optim_list.append(t_1)
-            bounds_list.append((t_1_min, t_1_max))
 
     if "t_A" in found_values:
         if t_A_fixed:
@@ -198,7 +178,6 @@ def main():
         else:
             optim_variables.append("t_A")
             optim_list.append(t_A)
-            bounds_list.append((t_A_min, t_A_max))
 
     if "t_B" in found_values:
         if t_B_fixed:
@@ -206,7 +185,6 @@ def main():
         else:
             optim_variables.append("t_B")
             optim_list.append(t_B)
-            bounds_list.append((t_B_min, t_B_max))
 
     if "t_C" in found_values:
         if t_C_fixed:
@@ -214,7 +192,6 @@ def main():
         else:
             optim_variables.append("t_C")
             optim_list.append(t_C)
-            bounds_list.append((t_C_min, t_C_max))
 
     case = frozenset(found_values)
 
@@ -227,8 +204,7 @@ def main():
             fixed_dict[param] = fixed_params[param]
         elif param in optimized_params:
             optim_variables.append(param)
-            optim_list.append(optimized_params[param][0])
-            bounds_list.append((optimized_params[param][1], optimized_params[param][2]))
+            optim_list.append(optimized_params[param])
         else:
             raise ValueError(
                 "Parameters 't_2', 'N_ABC', 'N_AB' and 'r' must be present in optimized or fixed parameters."
@@ -240,100 +216,53 @@ def main():
             "Warning: 't_upper' not found in parameter definition. Calculating from 't_3' and 'N_ABC'."
         )
         if "N_ABC" in optimized_params:
-            N_ABC_starting = optimized_params["N_ABC"][0]
-            lower_N_ABC = optimized_params["N_ABC"][1]
-            upper_N_ABC = optimized_params["N_ABC"][2]
-            if (
-                "t_3" in optimized_params
-            ):  ## USE t_3 BOUNDS (INVERSE, LOWER t_3, lower t_upper, higher N_ABC. Check if t_upper bounds are  still around starting, user definition of t_upper, calculate t_3 from t_upper for t_out)
-                t_3_starting = optimized_params["t_3"][0]
-                lower_t_3 = optimized_params["t_3"][1]
-                upper_t_3 = optimized_params["t_3"][2]
+            N_ABC_starting = optimized_params["N_ABC"]
+            if "t_3" in optimized_params:
+                t_3_starting = optimized_params["t_3"]
                 t_upper_starting = (
                     t_3_starting
                     - cutpoints_ABC(fixed_dict["n_int_ABC"], 1 / N_ABC_starting)[-2]
                 )
-                lower_t_upper = (
-                    lower_t_3
-                    - cutpoints_ABC(fixed_dict["n_int_ABC"], 1 / upper_N_ABC)[-2]
-                )
-                upper_t_upper = (
-                    upper_t_3
-                    - cutpoints_ABC(fixed_dict["n_int_ABC"], 1 / lower_N_ABC)[-2]
-                )
-                if not (lower_t_upper <= t_upper_starting <= upper_t_upper):
-                    raise ValueError(
-                        f"When calculating t_upper from t_3 and N_ABC, the starting value ({t_upper_starting}) was not between "
-                        f"the minimum ({lower_t_upper}) and maximum ({upper_t_upper})."
-                    )
-                t_upper = [t_upper_starting, lower_t_upper, upper_t_upper]
+                t_upper = t_upper_starting
                 optim_variables.append("t_upper")
                 optim_list.append(t_upper_starting)
-                bounds_list.append((lower_t_upper, upper_t_upper))
 
             elif "t_3" in fixed_params:
                 t_3 = fixed_params["t_3"]
                 t_upper_starting = (
                     t_3 - cutpoints_ABC(fixed_dict["n_int_ABC"], 1 / N_ABC_starting)[-2]
                 )
-                lower_t_upper = (
-                    t_3 - cutpoints_ABC(fixed_dict["n_int_ABC"], 1 / upper_N_ABC)[-2]
-                )
-                upper_t_upper = (
-                    t_3 - cutpoints_ABC(fixed_dict["n_int_ABC"], 1 / lower_N_ABC)[-2]
-                )
-                if not (lower_t_upper <= t_upper_starting <= upper_t_upper):
-                    raise ValueError(
-                        f"When calculating t_upper from t_3 and N_ABC, the starting value ({t_upper_starting}) was not between "
-                        f"the minimum ({lower_t_upper}) and maximum ({upper_t_upper})."
-                    )
-                t_upper = [t_upper_starting, lower_t_upper, upper_t_upper]
+                t_upper = t_upper_starting
                 optim_variables.append("t_upper")
                 optim_list.append(t_upper_starting)
-                bounds_list.append((lower_t_upper, upper_t_upper))
             else:
                 raise ValueError("'t_3' not found in parameter definition.")
         elif "N_ABC" in fixed_params:
             N_ABC_starting = fixed_params["N_ABC"]
             if "t_3" in optimized_params:
-                t_3_starting = optimized_params["t_3"][0]
-                lower_t_3 = optimized_params["t_3"][1]
-                upper_t_3 = optimized_params["t_3"][2]
+                t_3_starting = optimized_params["t_3"]
                 t_upper_starting = (
                     t_3_starting
                     - cutpoints_ABC(fixed_dict["n_int_ABC"], 1 / N_ABC_starting)[-2]
                 )
-                lower_t_upper = (
-                    lower_t_3
-                    - cutpoints_ABC(fixed_dict["n_int_ABC"], 1 / N_ABC_starting)[-2]
-                )
-                upper_t_upper = (
-                    upper_t_3
-                    - cutpoints_ABC(fixed_dict["n_int_ABC"], 1 / N_ABC_starting)[-2]
-                )
-                if not (lower_t_upper <= t_upper_starting <= upper_t_upper):
-                    raise ValueError(
-                        f"When calculating t_upper from t_3 and N_ABC, the starting value ({t_upper_starting}) was not between "
-                        f"the minimum ({lower_t_upper}) and maximum ({upper_t_upper})."
-                    )
-                t_upper = [t_upper_starting, lower_t_upper, upper_t_upper]
+                t_upper = t_upper_starting
                 optim_variables.append("t_upper")
                 optim_list.append(t_upper)
-                bounds_list.append((lower_t_upper, upper_t_upper))
             elif "t_3" in fixed_params:
-                raise ValueError(
-                    "At least one, 't_3' or 'N_ABC' must be present in optimized parameters."
+                t_3 = fixed_params["t_3"]
+                t_upper_starting = (
+                    t_3 - cutpoints_ABC(fixed_dict["n_int_ABC"], 1 / N_ABC_starting)[-2]
                 )
+                t_upper = t_upper_starting
+                optim_variables.append("t_upper")
+                optim_list.append(t_upper)
             else:
                 raise ValueError("'t_3' not found in parameter definition.")
         else:
             raise ValueError("'N_ABC' not found in parameter definition.")
     elif "t_upper" in optimized_params:
         optim_variables.append("t_upper")
-        optim_list.append(optimized_params["t_upper"][0])
-        bounds_list.append(
-            (optimized_params["t_upper"][1], optimized_params["t_upper"][2])
-        )
+        optim_list.append(optimized_params["t_upper"])
     elif "t_upper" in fixed_params:
         fixed_dict["t_upper"] = fixed_params["t_upper"]
 
@@ -350,30 +279,8 @@ def main():
                 f"Parameter '{param}' cannot be present in both fixed and optimized parameters."
             )
         starting_value = float(optim_list[i])
-        lower_bound = float(bounds_list[i][0])
-        upper_bound = float(bounds_list[i][1])
-
-        if not (lower_bound <= starting_value <= upper_bound):
-            raise ValueError(
-                f"Starting value for '{param}' ({starting_value}) must be between the minimum ({lower_bound}) and maximum ({upper_bound})."
-            )
         if not isinstance(starting_value, (int, float)) or starting_value <= 0:
-            raise ValueError(f"Starting value for '{param}' must be a positive number.")
-        if not isinstance(lower_bound, (int, float)) or lower_bound <= 0:
-            raise ValueError(f"Minimum value for '{param}' must be a positive number.")
-        # Special handling for 'r'
-        if param == "r":
-            optim_list[i] = starting_value / float(mu)
-            bounds_list[i] = (
-                lower_bound / float(mu),
-                upper_bound / float(mu),
-            )
-        else:
-            optim_list[i] = starting_value * float(mu)
-            bounds_list[i] = (
-                lower_bound * float(mu),
-                upper_bound * float(mu),
-            )
+            raise ValueError(f"Value for '{param}' must be a positive number.")
 
     for param, values in fixed_dict.items():
         if param != "n_int_AB" and param != "n_int_ABC":
@@ -382,84 +289,175 @@ def main():
             else:
                 fixed_dict[param] = float(values) * float(mu)
 
-    filtered_fixed_dict = {
-        k: v for k, v in fixed_dict.items() if k not in ["n_int_AB", "n_int_ABC"]
-    }
+    for i, param in enumerate(optimized_params):
+        fixed_dict[param] = optim_list[i]
 
-    for param, value in filtered_fixed_dict.items():
-        if param == "r":
-            filtered_fixed_dict[param] = float(value) * mu
-        else:
-            filtered_fixed_dict[param] = float(value) / mu
+    cut_ABC = cutpoints_ABC(fixed_dict["n_int_ABC"], 1)
+    if case == frozenset(["t_A", "t_B", "t_C"]):
 
-    filtered_fixed_dict["mu"] = mu
-
-    starting_params_yaml = os.path.join(output_path, "starting_params.yaml")
-
-    def adjust_value(value, param, mu):
-        """Adjusts the parameter value based on the parameter name."""
-        value = float(value)
-        return value * mu if param == "r" else value / mu
-
-    def adjust_bounds(bounds, param, mu):
-        """Adjusts the bounds for the parameter based on the parameter name."""
-        lower, upper = float(bounds[0]), float(bounds[1])
-        return [lower * mu, upper * mu] if param == "r" else [lower / mu, upper / mu]
-
-    optim_dict = {
-        param: adjust_value(val, param, mu)
-        for param, val in zip(optim_variables, optim_list)
-    }
-    bound_dict = {
-        param: adjust_bounds(bounds, param, mu)
-        for param, bounds in zip(optim_variables, bounds_list)
-    }
-
-    starting_bounds = {
-        param: FlowSeq([optim_dict[param], *bound_dict[param]])
-        for param in optim_variables
-    }
-    starting_params = {
-        "fixed_parameters": filtered_fixed_dict,
-        "optimized_parameters": starting_bounds,
-        "settings": settings,
-    }
-    if "species_list" in starting_params["settings"]:
-        starting_params["settings"]["species_list"] = FlowSeq(
-            starting_params["settings"]["species_list"]
+        t_out = (
+            (
+                (
+                    ((fixed_dict["t_A"] + fixed_dict["t_B"]) / 2 + fixed_dict["t_2"])
+                    + fixed_dict["t_C"]
+                )
+                / 2
+                + cut_ABC[fixed_dict["n_int_ABC"] - 1] * fixed_dict["N_ABC"]
+                + fixed_dict["t_upper"]
+                + 2 * fixed_dict["N_ABC"]
+            )
+            if "t_out" not in fixed_dict
+            else fixed_dict["t_out"]
         )
-    with open(starting_params_yaml, "w") as f:
-        yaml.dump(starting_params, f, default_flow_style=False)
+        fixed_dict["t_out"] = t_out
 
-    best_model_yaml = os.path.join(output_path, "best_model.yaml")
-    starting_best_model = {
-        "fixed_parameters": filtered_fixed_dict,
-        "optimized_parameters": {},
-        "results": {"log_likelihood": -inf, "iteration": None},
-        "settings": settings,
-    }
-    with open(best_model_yaml, "w") as f:
-        yaml.dump(starting_best_model, f)
+    elif case == frozenset(["t_1", "t_A"]):
+        t_B = fixed_dict["t_1"]
+        t_C = fixed_dict["t_1"] + fixed_dict["t_2"]
+        t_out = (
+            fixed_dict["t_1"]
+            + fixed_dict["t_2"]
+            + cut_ABC[fixed_dict["n_int_ABC"] - 1] * fixed_dict["N_ABC"]
+            + fixed_dict["t_upper"]
+            + 2 * fixed_dict["N_ABC"]
+            if "t_out" not in fixed_dict
+            else fixed_dict["t_out"]
+        )
+        fixed_dict["t_B"] = t_B
+        fixed_dict["t_C"] = t_C
+        fixed_dict["t_out"] = t_out
+        fixed_dict.pop("t_1")
+    elif case == frozenset(["t_1", "t_B"]):
+        t_A = fixed_dict["t_1"]
+        t_C = fixed_dict["t_1"] + fixed_dict["t_2"]
+        t_out = (
+            fixed_dict["t_1"]
+            + fixed_dict["t_2"]
+            + cut_ABC[fixed_dict["n_int_ABC"] - 1] * fixed_dict["N_ABC"]
+            + fixed_dict["t_upper"]
+            + 2 * fixed_dict["N_ABC"]
+            if "t_out" not in fixed_dict
+            else fixed_dict["t_out"]
+        )
+        fixed_dict["t_A"] = t_A
+        fixed_dict["t_C"] = t_C
+        fixed_dict["t_out"] = t_out
+        fixed_dict.pop("t_1")
+    elif case == frozenset(["t_1", "t_C"]):
+        t_A = fixed_dict["t_1"]
+        t_B = fixed_dict["t_1"]
+        t_out = (
+            fixed_dict["t_1"]
+            + fixed_dict["t_2"]
+            + cut_ABC[fixed_dict["n_int_ABC"] - 1] * fixed_dict["N_ABC"]
+            + fixed_dict["t_upper"]
+            + 2 * fixed_dict["N_ABC"]
+            if "t_out" not in fixed_dict
+            else fixed_dict["t_out"]
+        )
+        fixed_dict["t_A"] = t_A
+        fixed_dict["t_B"] = t_B
+        fixed_dict["t_out"] = t_out
+        fixed_dict.pop("t_1")
+    elif case == frozenset(["t_A", "t_B"]):
+        t_C = (fixed_dict["t_A"] + fixed_dict["t_B"]) / 2 + fixed_dict["t_2"]
+        t_out = (
+            (
+                (
+                    ((fixed_dict["t_A"] + fixed_dict["t_B"]) / 2 + fixed_dict["t_2"])
+                    + t_C
+                )
+                / 2
+                + cut_ABC[fixed_dict["n_int_ABC"] - 1] * fixed_dict["N_ABC"]
+                + fixed_dict["t_upper"]
+                + 2 * fixed_dict["N_ABC"]
+            )
+            if "t_out" not in fixed_dict
+            else fixed_dict["t_out"]
+        )
+        fixed_dict["t_C"] = t_C
+        fixed_dict["t_out"] = t_out
+    elif case == frozenset(["t_A", "t_C"]):
+        t_B = (fixed_dict["t_A"] + fixed_dict["t_C"] - fixed_dict["t_2"]) / 2
+        t_out = (
+            (
+                (
+                    ((fixed_dict["t_A"] + t_B) / 2 + fixed_dict["t_2"])
+                    + fixed_dict["t_C"]
+                )
+                / 2
+                + cut_ABC[fixed_dict["n_int_ABC"] - 1] * fixed_dict["N_ABC"]
+                + fixed_dict["t_upper"]
+                + 2 * fixed_dict["N_ABC"]
+            )
+            if "t_out" not in fixed_dict
+            else fixed_dict["t_out"]
+        )
+        fixed_dict["t_B"] = t_B
+        fixed_dict["t_out"] = t_out
+    elif case == frozenset(["t_B", "t_C"]):
+        t_A = (fixed_dict["t_B"] + fixed_dict["t_C"] - fixed_dict["t_2"]) / 2
+        t_out = (
+            (
+                (
+                    ((t_A + fixed_dict["t_B"]) / 2 + fixed_dict["t_2"])
+                    + fixed_dict["t_C"]
+                )
+                / 2
+                + cut_ABC[fixed_dict["n_int_ABC"] - 1] * fixed_dict["N_ABC"]
+                + fixed_dict["t_upper"]
+                + 2 * fixed_dict["N_ABC"]
+            )
+            if "t_out" not in fixed_dict
+            else fixed_dict["t_out"]
+        )
+        fixed_dict["t_A"] = t_A
+        fixed_dict["t_out"] = t_out
+    elif case == frozenset(["t_1"]):
+        t_A = t_B = fixed_dict["t_1"]
+        t_C = fixed_dict["t_1"] + fixed_dict["t_2"]
+        t_out = (
+            fixed_dict["t_1"]
+            + fixed_dict["t_2"]
+            + cut_ABC[fixed_dict["n_int_ABC"] - 1] * fixed_dict["N_ABC"]
+            + fixed_dict["t_upper"]
+            + 2 * fixed_dict["N_ABC"]
+            if "t_out" not in fixed_dict
+            else fixed_dict["t_out"]
+        )
+        fixed_dict["t_A"] = t_A
+        fixed_dict["t_B"] = t_B
+        fixed_dict["t_C"] = t_C
+        fixed_dict["t_out"] = t_out
+        fixed_dict.pop("t_1")
 
+    print("Parameters validated, reading alignment.")
     maf_alignment = maf_parser(maf_path, species_list)
     if maf_alignment is None:
         raise ValueError("Error reading MAF alignment file.")
 
-    print("Running optimization...")
-    optimizer(
-        optim_variables=optim_variables,
-        optim_list=optim_list,
-        bounds=bounds_list,
-        fixed_params=fixed_dict,
-        V_lst=maf_alignment,
-        res_name=output_path,
-        case=case,
-        method=method,
-        header=True,
+    print("Calculating transition and emission probability matrices.")
+    a, b, pi, hidden_names, observed_names = trans_emiss_calc(
+        fixed_dict["t_A"],
+        fixed_dict["t_B"],
+        fixed_dict["t_C"],
+        fixed_dict["t_2"],
+        fixed_dict["t_upper"],
+        fixed_dict["t_out"],
+        fixed_dict["N_AB"],
+        fixed_dict["N_ABC"],
+        fixed_dict["r"],
+        fixed_dict["n_int_AB"],
+        fixed_dict["n_int_ABC"],
+        "standard",
+        "standard",
     )
+    print("Running viterbi...")
 
+    viterbi_result = viterbi_wrapper(a=a, b=b, pi=pi, V_lst=maf_alignment)
+    print(viterbi_result)
     print(
-        f"Optimization complete. Results saved to {os.path.join(output_path, "optimization_history.csv")}.\n Best model saved to {best_model_yaml}."
+        f"Viterbi decoding complete. Results saved to {os.path.join(output_path, "viterbi.csv")}."
     )
 
 
