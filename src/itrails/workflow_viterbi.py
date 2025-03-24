@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 
 from itrails.cutpoints import cutpoints_ABC
@@ -281,6 +282,10 @@ def main():
         starting_value = float(optim_list[i])
         if not isinstance(starting_value, (int, float)) or starting_value <= 0:
             raise ValueError(f"Value for '{param}' must be a positive number.")
+        if param == "r":
+            optim_list[i] = starting_value / float(mu)
+        else:
+            optim_list[i] = starting_value * float(mu)
 
     for param, values in fixed_dict.items():
         if param != "n_int_AB" and param != "n_int_ABC":
@@ -432,6 +437,8 @@ def main():
         fixed_dict.pop("t_1")
 
     print("Parameters validated, reading alignment.")
+    for key, value in fixed_dict.items():
+        print(f"{key}: {value}")
     maf_alignment = maf_parser(maf_path, species_list)
     if maf_alignment is None:
         raise ValueError("Error reading MAF alignment file.")
@@ -452,13 +459,21 @@ def main():
         "standard",
         "standard",
     )
-    print("Running viterbi...")
+
+    print("Running viterbi.")
 
     viterbi_result = viterbi_wrapper(a=a, b=b, pi=pi, V_lst=maf_alignment)
-    print(viterbi_result)
-    print(
-        f"Viterbi decoding complete. Results saved to {os.path.join(output_path, "viterbi.csv")}."
-    )
+    json_result = {}
+    for i, res in enumerate(viterbi_result):
+        # Convert the NumPy array to a list before storing it in the dictionary
+        json_result[f"Alignment block {i}"] = res.tolist()
+
+    # Convert the dictionary to a JSON string
+    json_str = json.dumps(json_result, indent=2)
+    output_file = os.path.join(output_path, "viterbi.json")
+    with open(output_file, "w") as f:
+        json.dump(json_str, f, indent=2)
+    print(f"Viterbi decoding complete. Results saved to {output_file}.")
 
 
 if __name__ == "__main__":
