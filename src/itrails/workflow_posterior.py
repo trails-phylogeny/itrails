@@ -469,9 +469,10 @@ def main():
         json_result[f"Alignment block {i}"] = res.tolist()
 
     # Convert the dictionary to a JSON string
+    json_str = json.dumps(json_result, indent=2)
     output_file = os.path.join(output_path, "viterbi.json")
     with open(output_file, "w") as f:
-        json.dump(json_result, f)
+        json.dump(json_str, f, indent=2)
     print(f"Viterbi decoding complete. Results saved to {output_file}.")
 
 
