@@ -40,4 +40,5 @@ where = ["src"]
 
 [project.scripts]
 itrails-optimize = "itrails.workflow_optimize:main"
+itrails-viterbi = "itrails.workflow_viterbi:main"
 itrails-print-example = "itrails.workflow_print_example:main"

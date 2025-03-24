@@ -1,16 +1,14 @@
 # Example configuration for itrails-optimize
 fixed_parameters:
-
   mu: 2e-8
 
 optimized_parameters: # [starting, min, max]
   N_AB: [50000, 5000, 500000]
   N_ABC: [50000, 5000, 500000]
   t_1: [240000, 24000, 2400000]
-  t_upper: [745069.3855665945, 74506.93855665945, 7450693.855665945]
   t_2: [40000, 4000, 400000]
-
   t_3: [800000, 80000, 8000000]
+  t_upper: [745069.3855665945, 74506.93855665945, 7450693.855665945]
   r: [1e-8, 1e-9, 1e-7]
 
 settings:
