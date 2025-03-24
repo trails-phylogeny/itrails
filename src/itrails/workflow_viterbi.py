@@ -1,6 +1,7 @@
 import argparse
-import json
 import os
+
+import h5py
 
 from itrails.cutpoints import cutpoints_ABC
 from itrails.get_trans_emiss import trans_emiss_calc
@@ -463,15 +464,13 @@ def main():
     print("Running viterbi.")
 
     viterbi_result = viterbi_wrapper(a=a, b=b, pi=pi, V_lst=maf_alignment)
-    json_result = {}
-    for i, res in enumerate(viterbi_result):
-        # Convert the NumPy array to a list before storing it in the dictionary
-        json_result[f"Alignment block {i}"] = res.tolist()
+    output_file = os.path.join(output_path, "viterbi.h5")
 
-    # Convert the dictionary to a JSON string
-    output_file = os.path.join(output_path, "viterbi.json")
-    with open(output_file, "w") as f:
-        json.dump(json_result, f)
+    with h5py.File(output_file, "w") as h5f:
+        for i, res in enumerate(viterbi_result):
+            dataset_name = f"Alignment block {i}"
+            h5f.create_dataset(dataset_name, data=res, compression="gzip")
+
     print(f"Viterbi decoding complete. Results saved to {output_file}.")
 
 
