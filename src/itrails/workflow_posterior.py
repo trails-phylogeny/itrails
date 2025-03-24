@@ -1,11 +1,10 @@
 import argparse
-import json
 import os
 
 from itrails.cutpoints import cutpoints_ABC
 from itrails.get_trans_emiss import trans_emiss_calc
 from itrails.ncpu import N_CPU, update_n_cpu
-from itrails.optimizer import viterbi_wrapper
+from itrails.optimizer import post_prob_wrapper
 from itrails.read_data import maf_parser
 from itrails.yaml_helpers import load_config
 
@@ -460,20 +459,20 @@ def main():
         "standard",
     )
 
-    print("Running viterbi.")
+    print("Running posterior decoding.")
 
-    viterbi_result = viterbi_wrapper(a=a, b=b, pi=pi, V_lst=maf_alignment)
-    json_result = {}
-    for i, res in enumerate(viterbi_result):
+    posterior_result = post_prob_wrapper(a=a, b=b, pi=pi, V_lst=maf_alignment)
+
+    for i, res in enumerate(posterior_result):
         # Convert the NumPy array to a list before storing it in the dictionary
-        json_result[f"Alignment block {i}"] = res.tolist()
+        print(f"Sample {i+1}: {res.shape}")
 
-    # Convert the dictionary to a JSON string
-    json_str = json.dumps(json_result, indent=2)
-    output_file = os.path.join(output_path, "viterbi.json")
-    with open(output_file, "w") as f:
-        json.dump(json_str, f, indent=2)
-    print(f"Viterbi decoding complete. Results saved to {output_file}.")
+    ## Convert the dictionary to a JSON string
+    # json_str = json.dumps(json_result, indent=2)
+    # output_file = os.path.join(output_path, "viterbi.json")
+    # with open(output_file, "w") as f:
+    #    json.dump(json_str, f, indent=2)
+    # print(f"Posterior decoding complete. Results saved to {output_file}.")
 
 
 if __name__ == "__main__":
