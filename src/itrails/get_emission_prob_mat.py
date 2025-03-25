@@ -9,7 +9,6 @@ from itrails.expm import expm
 def rate_mat_JC69(mu):
     """
     Return the rate matrix for the JC69 model.
-
     The JC69 model assumes equal base frequencies and equal substitution rates.
 
     :param mu: Mutation rate.
@@ -48,11 +47,7 @@ def p_b_given_a(t, Q):
 @nb.jit(nopython=True)
 def JC69_analytical_integral(aa, bb, cc, dd, t, mu, k):
     """
-    Calculate the integrated probability for observing nucleotides bb, cc, and dd given a starting nucleotide aa, a mutation rate mu, and a coalescent rate k.
-
-    This corresponds to computing:
-        P(b = bb, c = cc, d = dd | a = aa, mu, t)
-    by integrating the coalescent process over the interval t.
+    Calculate the integrated probability for observing nucleotides bb, cc, and dd given a starting nucleotide aa, a mutation rate mu, and a coalescent rate k. This corresponds to computing: P(b = bb, c = cc, d = dd | a = aa, mu, t) by integrating the coalescent process over the interval t.
 
     :param aa: Nucleotide at position a (integer or string).
     :type aa: int or str
@@ -125,12 +120,7 @@ def p_b_c_given_a_JC69_analytical(t, mu, k):
 @nb.jit(nopython=True)
 def JC69_analytical_integral_double(aa, bb, cc, dd, ee, ff, t, mu):
     """
-    Calculate the integrated probability for observing nucleotides bb, cc, dd, ee, and ff  given a starting nucleotide aa, using the JC69 model.
-
-    This computes:
-        P(b = bb, c = cc, d = dd, e = ee, f = ff | a = aa, mu, t)
-    by integrating over the coalescent process for two coalescent events.
-    Note: The coalescent rate is 1 for two sequences and 3 for three sequences.
+    Calculate the integrated probability for observing nucleotides bb, cc, dd, ee, and ff  given a starting nucleotide aa, using the JC69 model. This computes P(b = bb, c = cc, d = dd, e = ee, f = ff | a = aa, mu, t) by integrating over the coalescent process for two coalescent events. Note: The coalescent rate is 1 for two sequences and 3 for three sequences.
 
     :param aa: Nucleotide at position a (integer or string).
     :type aa: int or str
@@ -436,10 +426,7 @@ def p_b_c_d_given_a_JC69_analytical(t, mu):
 
 def b_c_d_given_a_to_dict_a_b_c_d(data):
     """
-    Convert a list of tuples (a, b, c, d, probability) into a nested dictionary.
-
-    The resulting dictionary is structured as:
-        dct[a][b][c][d] = probability
+    Convert a list of tuples (a, b, c, d, probability) into a nested dictionary. The resulting dictionary is structured as: dct[a][b][c][d] = probability
 
     :param data: List of tuples (a, b, c, d, probability), where a, b, c, d are nucleotide letters.
     :type data: list
@@ -460,10 +447,7 @@ def b_c_d_given_a_to_dict_a_b_c_d(data):
 
 def b_c_given_a_to_dict_a_b_c(data):
     """
-    Convert a list of tuples (a, b, c, probability) into a nested dictionary.
-
-    The resulting dictionary is structured as:
-        dct[a][b][c] = probability
+    Convert a list of tuples (a, b, c, probability) into a nested dictionary. The resulting dictionary is structured as: dct[a][b][c] = probability
 
     :param data: List of tuples (a, b, c, probability).
     :type data: list
@@ -482,10 +466,7 @@ def b_c_given_a_to_dict_a_b_c(data):
 
 def b_given_a_to_dict_a_b(data):
     """
-    Convert a list of tuples (a, b, probability) into a nested dictionary.
-
-    The resulting dictionary is structured as:
-        dct[a][b] = probability
+    Convert a list of tuples (a, b, probability) into a nested dictionary. The resulting dictionary is structured as: dct[a][b] = probability
 
     :param data: List of tuples (a, b, probability).
     :type data: list
@@ -519,24 +500,7 @@ def calc_emissions_single_JC69(
     coal_rate_2,
 ):
     """
-    Compute the emission probabilities for a hidden state containing two coalescent events
-    occurring at different time intervals.
-
-    The hidden state is represented by the following diagram:
-
-                        _________
-                       |         |
-             ---------abc0-----  |
-                   ____|___      |
-                  |        |     |
-             ----ab1-------c1--  |
-                  |        |     |
-             ----ab0-----  |     |
-                __|__      |     |
-               |     |     |     |
-             --a1----b1--  |     |
-               |     |     |     |
-               a0    b0    c0    d0
+    Compute the emission probabilities for a hidden state containing two coalescent events occurring at different time intervals.
 
     :param a0_a1_t_vec: List of time intervals for mutation from a0 to a1.
     :type a0_a1_t_vec: list of numeric
@@ -660,18 +624,6 @@ def calc_emissions_double_JC69(
     Compute the emission probabilities for a hidden state containing two coalescent events
     occurring in the same time interval.
 
-    The hidden state is represented by the following diagram:
-
-                        _________
-                       |         |
-             ---------abc0-----  |
-                   ____|___      |
-                __|__      |     |
-               |     |     |     |
-             --a1----b1----c1--  |
-               |     |     |     |
-               a0    b0    c0    d0
-
     :param a0_a1_t_vec: List of time intervals for mutation from a0 to a1.
     :type a0_a1_t_vec: list of numeric
     :param b0_b1_t_vec: List of time intervals for mutation from b0 to b1.
@@ -776,15 +728,6 @@ def get_emission_prob_mat(
 ):
     """
     Compute the emission probabilities for all hidden states given a set of population genetics parameters.
-
-    The hidden state structure is represented as:
-
-             |          |
-             |  ABC  |\ \
-             | AB |\ \ \ \
-             / /\ \ \ \ \ \
-            / /  \ \ \ \ \ \
-            A      B   C   D
 
     :param t_A: Time between present and the first speciation event for species A.
     :type t_A: numeric
@@ -1126,17 +1069,7 @@ def get_emission_prob_mat_introgression(
     cut_ABC="standard",
 ):
     """
-    Compute the emission probabilities for all hidden states in an introgression model 
-    given a set of population genetics parameters.
-
-    The hidden state structure is represented as:
-
-             |          |
-             |  ABC  |\ \
-             | AB |\ \ \ \
-             / /\ \ \ \ \ \
-            / /  \ \ \ \ \ \
-            A      B   C   D
+    Compute the emission probabilities for all hidden states in an introgression model given a set of population genetics parameters.
 
     :param t_A: Time between present and the first speciation event for species A.
     :type t_A: numeric

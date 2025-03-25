@@ -3,15 +3,17 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-itrails documentation
-=====================
+iTTRAILS Documentation
+=================================
 
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
-documentation for details.
+Current version: |release|
+
+Welcome to the iTTRAILS documentation. This documentation is intended to help you get started with iTTRAILS and to provide you with a reference guide for the various modules and classes that are available in iTTRAILS.
 
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
+   source/itrails
+   source/modules

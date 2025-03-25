@@ -47,16 +47,18 @@ def cutpoints_ABC(n_int_ABC, coal_ABC):
 
 def get_times(cut, intervals):
     """
-    This functions returns a list of times representing
-    the time within each of the specified intervals. It
-    does so by using a list of all possible cutpoints and
-    a list of indices representing the interval cutpoints
-    in order.
+    Returns a list of time differences for each specified interval.
 
-    :param cut: List of ordered cutpoints
+    This function computes the duration for each interval defined by the given indices.
+    It does so by subtracting the earlier cutpoint from the subsequent one based on the indices
+    provided in the intervals list.
+
+    :param cut: List of ordered cutpoints.
     :type cut: list[float]
-    :param intervals: Ordered indices of cutpoints
+    :param intervals: Ordered indices of cutpoints that define the intervals.
     :type intervals: list[int]
+    :return: List of time differences between consecutive cutpoints as defined by intervals.
+    :rtype: list[float]
     """
     return [
         cut[intervals[i + 1]] - cut[intervals[i]] for i in range(len(intervals) - 1)

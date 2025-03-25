@@ -20,6 +20,7 @@ from itrails.yaml_helpers import update_best_model
 
 def forward_loglik_par(a, b, pi, V, order):
     """Computes the log-likelihood in parallel by converting the provided order into a List and then calling forward_loglik.
+
     :param a: Transition probability matrix.
     :type a: numpy array.
     :param b: Emission probability matrix.
@@ -38,6 +39,7 @@ def forward_loglik_par(a, b, pi, V, order):
 
 def loglik_wrapper_par(a, b, pi, V_lst):
     """Parallel log-likelihood wrapper that builds an order list using get_idx_state, then computes the log-likelihood for each observed state vector in V_lst in parallel using joblib, and returns the sum of the results.
+
     :param a: Transition probability matrix.
     :type a: numpy array.
     :param b: Emission probability matrix.
@@ -64,7 +66,9 @@ def loglik_wrapper_par(a, b, pi, V_lst):
 
 
 def loglik_wrapper_par_new_method(a, b, pi, V_lst):
-    """Parallel log-likelihood wrapper using joblib that builds an order list via get_idx_state_new_method, computes the log-likelihood for each observed state vector in V_lst in parallel, and returns the sum of the computed values. :param a: Transition probability matrix.
+    """Parallel log-likelihood wrapper using joblib that builds an order list via get_idx_state_new_method, computes the log-likelihood for each observed state vector in V_lst in parallel, and returns the sum of the computed values.
+
+    :param a: Transition probability matrix.
     :type a: numpy array.
     :param b: Emission probability matrix.
     :type b: numpy array.
@@ -88,6 +92,7 @@ def loglik_wrapper_par_new_method(a, b, pi, V_lst):
 
 def loglik_wrapper(a, b, pi, V_lst):
     """Sequential log-likelihood wrapper that builds an order list using get_idx_state, iteratively computes the log-likelihood for each observed state vector in V_lst, and returns the total sum.
+
     :param a: Transition probability matrix.
     :type a: numpy array.
     :param b: Emission probability matrix.
@@ -113,6 +118,7 @@ def loglik_wrapper(a, b, pi, V_lst):
 
 def loglik_wrapper_new_method(a, b, pi, V_lst):
     """Sequential log-likelihood wrapper that builds an order list using get_idx_state_new_method, computes the log-likelihood for each observed state vector in V_lst sequentially, and returns the total sum.
+
     :param a: Transition probability matrix.
     :type a: numpy array.
     :param b: Emission probability matrix.
@@ -139,6 +145,7 @@ def loglik_wrapper_new_method(a, b, pi, V_lst):
 @njit
 def forward_loglik(a, b, pi, V, order):
     """Computes the log-likelihood for a given observed state sequence by running the forward algorithm and applying log-sum-exp for numerical stability.
+
     :param a: Transition probability matrix.
     :type a: numpy array.
     :param b: Emission probability matrix.
@@ -157,7 +164,8 @@ def forward_loglik(a, b, pi, V, order):
 
 @njit
 def forward(a, b, pi, V, order):
-    """Executes the forward algorithm for Hidden Markov Models allowing for missing data by computing the log-scaled alpha values;
+    """Executes the forward algorithm for Hidden Markov Models allowing for missing data by computing the log-scaled alpha values.
+
     :param a: Transition probability matrix.
     :type a: numpy array.
     :param b: Emission probability matrix.
@@ -184,6 +192,7 @@ def forward(a, b, pi, V, order):
 def backward(a, b, V, order):
     """Performs the backward algorithm for Hidden Markov Models by computing the beta values in log space;
     :param a: Transition probability matrix.
+
     :type a: numpy array.
     :param b: Emission probability matrix.
     :type b: numpy array.
@@ -206,6 +215,7 @@ def backward(a, b, V, order):
 
 def post_prob(a, b, pi, V, order):
     """Computes the posterior probabilities of the hidden states for a given observed sequence by combining the forward and backward algorithms and normalizing the result.
+
     :param a: Transition probability matrix.
     :type a: numpy array.
     :param b: Emission probability matrix.
@@ -229,7 +239,8 @@ def post_prob(a, b, pi, V, order):
 
 
 def post_prob_wrapper(a, b, pi, V_lst):
-    """Wrapper function that computes the posterior probabilities for a list of observed state sequences by building an order list using get_idx_state and iteratively applying post_prob to each sequence;
+    """Wrapper function that computes the posterior probabilities for a list of observed state sequences by building an order list using get_idx_state and iteratively applying post_prob to each sequence.
+
     :param a: Transition probability matrix.
     :type a: numpy array.
     :param b: Emission probability matrix.
@@ -253,7 +264,8 @@ def post_prob_wrapper(a, b, pi, V_lst):
 
 @njit
 def viterbi_old(a, b, pi, V, order):
-    """Computes the Viterbi path using an iterative approach in log space by performing dynamic programming over the given observed sequence;
+    """Computes the Viterbi path using an iterative approach in log space by performing dynamic programming over the given observed sequence.
+
     :param a: Transition probability matrix.
     :type a: numpy array.
     :param b: Emission probability matrix.
@@ -292,6 +304,7 @@ def viterbi_old(a, b, pi, V, order):
 
 def viterbi(a, b, pi, V, order):
     """Computes the Viterbi path by performing the forward pass in log space with dynamic programming and returning both the omega matrix and the backtracking pointer matrix.
+
     :param a: Transition probability matrix.
     :type a: numpy array.
     :param b: Emission probability matrix.
@@ -321,9 +334,10 @@ def viterbi(a, b, pi, V, order):
 
 
 def backtrack_viterbi(omega, prev):
-    """Reconstructs the optimal Viterbi path by backtracking through the pointer matrix obtained from the viterbi function;
+    """Reconstructs the optimal Viterbi path by backtracking through the pointer matrix obtained from the viterbi function.
+
     :param omega: Omega matrix containing the log probabilities for each time step and state.
-    type omega: numpy array.
+    :type omega: numpy array.
     :param prev: Backtracking pointer matrix from the Viterbi algorithm.
     :type prev: numpy array. :return: Optimal Viterbi path as an array of state indices.
     :rtype: numpy array."""
@@ -342,6 +356,7 @@ def backtrack_viterbi(omega, prev):
 
 def viterbi_wrapper(a, b, pi, V_lst):
     """Wrapper for the Viterbi algorithm that builds an order list using get_idx_state, applies the viterbi and backtrack_viterbi functions to each observed state vector in V_lst, and returns a list of Viterbi paths.
+
     :param a: Transition probability matrix.
     :type a: numpy array.
     :param b: Emission probability matrix.
@@ -364,6 +379,7 @@ def viterbi_wrapper(a, b, pi, V_lst):
 
 def write_list(lst, res_name):
     """Appends the elements of a list as a comma-separated line to a CSV file with the given file name.
+
     :param lst: List of values to append.
     :type lst: list.
     :param res_name: File name (or path) to which the list should be appended.
@@ -379,6 +395,7 @@ def write_list(lst, res_name):
 
 def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, info):
     """Objective function for the optimizer that updates a copy of the fixed parameter dictionary with the current optimized values from arg_lst, computes additional derived parameters based on the specified case (which determines how time parameters are combined), calculates the transition probability, emission, and initial state probability matrices via trans_emiss_calc, evaluates the log-likelihood for the observed data V_lst using either a parallel or sequential log-likelihood wrapper depending on available CPUs, logs the evaluation to an optimization history CSV file, updates the best model if the current log-likelihood improves upon the previous best, increments the evaluation count, and returns the negative log-likelihood value (to be minimized).
+
     :param arg_lst: Array of parameter values to be optimized that will update the fixed parameter dictionary.
     :type arg_lst: numpy array.
     :param optimized_params: List of parameter names (keys in d) that are subject to optimization. :type optimized_params: list[str].
@@ -579,25 +596,16 @@ def optimizer(
     """
     Optimization function.
 
-    Parameters
-    ----------
-    optim_params : dictionary
-        Dictionary containing the initial values for the
-        parameters to be optimized, and their optimization
-        bounds. The structure of the dictionary should be
-        as follows:
-            dct['variable'] = [initial_value, lower_bound, upper_bound]
-        The dictionary must contain either 6 (t_1, t_2, t_upper, N_AB, N_ABC, r)
-        or 9 (t_A, t_B, t_C, t_2, t_upper, t_out, N_AB, N_ABC, r) entries,
-        in that specific order.
-    fixed params : dictionary
-        Dictionary containing the values for the fixed parameters.
-        The dictionary must contain entries n_int_AB and n_int_ABC (in no particular order).
-    V_lst : list of numpy arrays
-        List of arrays of integers corresponding to the the observed states.
-    res_name : str
-        Location and name of the file where the results should be
-        saved (in csv format).
+    :param optim_params: Dictionary containing the initial values for the parameters to be optimized, and their optimization bounds. The structure of the dictionary should be as follows: ``dct['variable'] = [initial_value, lower_bound, upper_bound]``. The dictionary must contain either 6 entries (``t_1, t_2, t_upper, N_AB, N_ABC, r``) or 9 entries (``t_A, t_B, t_C, t_2, t_upper, t_out, N_AB, N_ABC, r``) in that specific order.
+    :type optim_params: dict
+    :param fixed_params: Dictionary containing the values for the fixed parameters. The dictionary must include the entries ``n_int_AB`` and ``n_int_ABC`` (in no particular order).
+    :type fixed_params: dict
+    :param V_lst: List of numpy arrays of integers corresponding to the observed states.
+    :type V_lst: list
+    :param res_name: File path and name where the results should be saved (in CSV format).
+    :type res_name: str
+    :return: None. This function updates the results on each iteration of the minimizer.
+    :rtype: None
     """
     optimization_history = os.path.join(res_name, "optimization_history.csv")
     if header:

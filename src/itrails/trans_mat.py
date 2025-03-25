@@ -7,6 +7,7 @@ import numpy as np
 @nb.jit(nopython=True)
 def bell_numbers(n):
     """Given a number 'n', returns the n'th Bell Number used for initializing the matrices with the correct number of rows.
+
     :param n: number for which the Bell number is returned.
     :type n: int.
     :return: the n'th Bell Number.
@@ -24,6 +25,7 @@ def bell_numbers(n):
 
 def partition(collection):
     """Generator that creates all set partitions from a list of consecutive numbers; for a given list, it yields nested lists representing all possible partitions of its elements into at most len(collection) subsets.
+
     :param collection: list of integers ranging from 1 to n.
     :type collection: list[int].
     :return: generator yielding lists of lists representing the partitions.
@@ -40,6 +42,7 @@ def partition(collection):
 
 def set_partitions(species):
     """Returns the set partitions for a given number of species in the CTMC by using the bell_numbers and partition generator; the resulting numpy array reformats each partition so that each number represents one nucleotide position (e.g., partition [[1,2,3],[4,5,6]] becomes [1,1,1,2,2,2]).
+
     :param species: number of species for which partitions are generated.
     :type species: int.
     :return: numpy array with reformatted set partitions.
@@ -57,6 +60,7 @@ def set_partitions(species):
 @nb.jit(nopython=True)
 def translate_to_minimum(array):
     """Reformats a set partition so that its values are renumbered consecutively starting from 1; for example, converts [1,2,2,2,4,4] to [1,2,2,2,3,3].
+
     :param array: set partition to reformat.
     :type array: np.array of int with shape (1, n_species*2).
     :return: reformatted set partition with consecutive minimum values.
@@ -69,6 +73,7 @@ def translate_to_minimum(array):
 
 def find_revcoal_recomb(state_array, species, state_dict):
     """Given a state array and number of species, returns all possible reversible coalescences (and recombinations) for each state; produces an array with (4*species + 3) columns where the first 2*species columns represent the state before the event and the next 2*species columns represent the state after the event.
+
     :param state_array: set partition array for the given number of species.
     :type state_array: np.array of int with shape (Bell number, n_species*2).
     :param species: number of species. :type species: int.
@@ -116,6 +121,7 @@ def find_revcoal_recomb(state_array, species, state_dict):
 
 def find_norevcoal(state_array, species, state_dict):
     """Given a state array and number of species, returns all possible non-reversible coalescences for each state; produces an array with (4*species + 3) columns where the first 2*species columns represent the state before the event and the next 2*species columns represent the state after the event.
+
     :param state_array: set partition array for the given number of species.
     :type state_array: np.array of int with shape (Bell number, n_species*2).
     :param species: number of species.
@@ -197,6 +203,7 @@ def number_array_1(
     tuple_states=nb.types.Tuple((nb.types.int64, nb.types.int64)),
 ):
     """For the 1-species CTMC, generates two dictionaries: an omega dictionary that tracks the location of each coalescence state (keys are tuples of minimum increasing substring sums) and a state dictionary mapping each state tuple to its index.
+
     :param state_array: array with every set partition for 1 species.
     :type state_array: np.array of int with shape (Bell number, n_species*2).
     :param species: number of species.
@@ -291,6 +298,7 @@ def number_array_2(
     ),
 ):
     """For the 2-species CTMC, generates two dictionaries: an omega dictionary tracking the location of each coalescence state (keys are tuples of minimum increasing substring sums) and a state dictionary mapping each state tuple to its index.
+
     :param state_array: array with every set partition for 2 species.
     :type state_array: np.array of int with shape (Bell number, n_species*2).
     :param species: number of species.
@@ -392,6 +400,7 @@ def number_array_3(
     ),
 ):
     """For the 3-species CTMC, generates two dictionaries: an omega dictionary tracking the location of each coalescence state (keys are tuples of minimum increasing substring sums) and a state dictionary mapping each state tuple to its index.
+
     :param state_array: array with every set partition for 3 species.
     :type state_array: np.array of int with shape (Bell number, n_species*2).
     :param species: number of species.
@@ -477,6 +486,7 @@ def number_array_3(
 
 def get_trans_mat(transition_mat, species, coal, rho):
     """Computes the CTMC transition probability matrix given a transition matrix, number of species, coal rate, and recombination rate; the matrix size is determined by the Bell number for 2*species and the diagonal is set to the negative sum of the off-diagonals.
+
     :param transition_mat: array representing the transition events.
     :type transition_mat: np.array.
     :param species: number of species.
@@ -500,6 +510,7 @@ def get_trans_mat(transition_mat, species, coal, rho):
 
 def get_omega_nonrev_counts(species):
     """Computes and returns a dictionary mapping each omega value (sum of selected mss values) to its corresponding non-reversible coalescence count (subset size minus one).
+
     :param species: number of species.
     :type species: int.
     :return: dictionary mapping omega values to non-reversible counts.
@@ -517,6 +528,7 @@ def get_omega_nonrev_counts(species):
 
 def wrapper_state_1():
     """Wrapper function that returns the transition matrix, omega dictionary, state dictionary, and omega non-reversible counts for 1 species.
+
     :return: tuple containing transition matrix, omega dictionary, state dictionary, and omega non-reversible counts for 1 species.
     :rtype: tuple."""
     species = 1
@@ -532,6 +544,7 @@ def wrapper_state_1():
 
 def wrapper_state_2():
     """Wrapper function that returns the transition matrix, omega dictionary, state dictionary, and omega non-reversible counts for 2 species.
+
     :return: tuple containing transition matrix, omega dictionary, state dictionary, and omega non-reversible counts for 2 species.
     :rtype: tuple."""
     species = 2
@@ -547,6 +560,7 @@ def wrapper_state_2():
 
 def wrapper_state_3():
     """Wrapper function that returns the transition matrix, omega dictionary, state dictionary, and omega non-reversible counts for 3 species.
+
     :return: tuple containing transition matrix, omega dictionary, state dictionary, and omega non-reversible counts for 3 species.
     :rtype: tuple."""
     species = 3
@@ -562,6 +576,7 @@ def wrapper_state_3():
 
 def wrapper_state_general(species):
     """Wrapper function that returns the transition matrix, omega dictionary, state dictionary, and omega non-reversible counts for n species (where n must be 1, 2, or 3).
+
     :param species: number of species (must be 1, 2, or 3).
     :type species: int.
     :return: tuple containing transition matrix, omega dictionary, state dictionary, and omega non-reversible counts.

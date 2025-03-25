@@ -9,19 +9,18 @@
 import os
 import sys
 
-sys.path.insert(
-    0, os.path.abspath("../src")
-)  # Adjust so that your package can be imported
+sys.path.insert(0, os.path.abspath("../src"))  # Adjust to locate your package
 
 try:
     from itrails import __version__
 except ImportError:
-    __version__ = "0.0.0"  # Fallback if import fails
+    __version__ = "unknown"
 
 # Use the package version for the docs.
 release = __version__
 # Optionally, you can define a shorter version (e.g., major.minor)
 version = ".".join(__version__.split(".")[:2])
+rst_epilog = f"\n.. |release| replace:: {release}\n"
 
 project = "itrails"
 copyright = "2025, David Martin-Pestana, Iker Rivas-González"
@@ -43,5 +42,9 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "alabaster"
+html_theme = "sphinx_rtd_theme"
+html_theme_options = {
+    "display_version": True,
+}
+
 html_static_path = ["_static"]
