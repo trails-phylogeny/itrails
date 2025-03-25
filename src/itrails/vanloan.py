@@ -45,7 +45,7 @@ def vanloan_identify(
     :type key_indices: Numpy array
     :param key_array: Array to store current omega state of each step
     :type key_array: Numpy array
-    :param paths_array: Arary storing every subpath taken
+    :param paths_array: Array storing every subpath taken
     :type paths_array: Numpy array
     :param subpath_counts: Array storing the number of subpaths taken for each complete path
     :type subpath_counts: Numpy array
@@ -71,6 +71,8 @@ def vanloan_identify(
     :type by_l: int, optional
     :param by_r: Current omega right subpath, defaults to -1 (initial placeholder value)
     :type by_r: int, optional
+    :return: None
+    :rtype: None
     """
     if current[0] == omega_fin[0] and current[1] == omega_fin[1]:
         num_keys = num_keys_array[0]
@@ -389,9 +391,7 @@ def vanloan_identify_wrapper(
 
 def vanloan(trans_mat, path, tim, omega_dict):
     """
-    This function performs the van Loan (1978) method for
-    finding the integral of a series of multiplying matrix
-    exponentials. Function generalizes to any number of matrices.
+    This function performs the van Loan (1978) method for finding the integral of a product of matrix exponentials. Function generalizes to any number of matrices.
 
     :param trans_mat: Transition rate matrix for the CTMC.
     :type trans_mat: Numpy array of type: float64[:, :].

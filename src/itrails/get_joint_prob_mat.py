@@ -31,6 +31,56 @@ def get_joint_prob_mat(
     cut_AB="standard",
     cut_ABC="standard",
 ):
+    """
+    Compute the joint probability matrix via sequential Markov chain steps and state combination.
+
+    This function calculates the joint probability matrix for a system involving three sets of species
+    (or speciation events) using input parameters for time, recombination rates, and coalescent rates.
+    It constructs individual transition matrices for separate species or combined states, then sequentially
+    simulates the Markov chain process for species pairs (AB) and the combined species (ABC) to produce
+    the final joint probability matrix.
+
+    :param t_A: Time (in coalescent units) for species A.
+    :type t_A: float
+    :param t_B: Time (in coalescent units) for species B.
+    :type t_B: float
+    :param t_AB: Time (in coalescent units) between speciation events for species A and B.
+    :type t_AB: float
+    :param t_C: Time (in coalescent units) for species C.
+    :type t_C: float
+    :param rho_A: Recombination rate for species A.
+    :type rho_A: float
+    :param rho_B: Recombination rate for species B.
+    :type rho_B: float
+    :param rho_AB: Recombination rate for the combined species A and B.
+    :type rho_AB: float
+    :param rho_C: Recombination rate for species C.
+    :type rho_C: float
+    :param rho_ABC: Recombination rate for the combined species A, B, and C.
+    :type rho_ABC: float
+    :param coal_A: Coalescent rate for species A.
+    :type coal_A: float
+    :param coal_B: Coalescent rate for species B.
+    :type coal_B: float
+    :param coal_AB: Coalescent rate for the combined species A and B.
+    :type coal_AB: float
+    :param coal_C: Coalescent rate for species C.
+    :type coal_C: float
+    :param coal_ABC: Coalescent rate for the combined species A, B, and C.
+    :type coal_ABC: float
+    :param n_int_AB: Number of discretized time intervals for the A-B process.
+    :type n_int_AB: int
+    :param n_int_ABC: Number of discretized time intervals for the A-B-C process.
+    :type n_int_ABC: int
+    :param cut_AB: Option for cutpoints in the A-B process; if a string, standard cutpoints are computed.
+    :type cut_AB: str or array-like
+    :param cut_ABC: Option for cutpoints in the A-B-C process; if a string, standard cutpoints are computed.
+    :type cut_ABC: str or array-like
+
+    :return: A numba typed dictionary mapping state tuples to numpy arrays containing the joint probability
+             matrices computed via the Markov chain process.
+    :rtype: dict
+    """
 
     transitions_1, omega_dict_1, state_dict_1, omega_nonrev_counts_1 = (
         wrapper_state_general(1)

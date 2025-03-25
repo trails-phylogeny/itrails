@@ -104,7 +104,7 @@ def remove_absorbing_indices(
     :param species: Number of species.
     :type species: int64.
     :param tuple_omegas: Type of omega, defaults to nb.types.Tuple((nb.types.int64, nb.types.int64))
-    :type tuple_omegas: Numba type, optional
+    :type tuple_omegas: Numba type, optional.
     :return: Dictionary without the absorbing states.
     :rtype: Numba typed dictionary.
     """

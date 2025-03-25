@@ -8,30 +8,30 @@ from itrails.expm import expm
 
 def rate_mat_JC69(mu):
     """
-    This function returns the rate matrix for the JC69 model.
+    Return the rate matrix for the JC69 model.
 
-    Parameters
-    ----------
-    mu : numeric
-        Mutation rate
+    The JC69 model assumes equal base frequencies and equal substitution rates.
+
+    :param mu: Mutation rate.
+    :type mu: numeric
+    :return: A 4x4 numpy array representing the JC69 rate matrix.
+    :rtype: numpy.ndarray
     """
     return np.full((4, 4), mu / 4) - np.diag([mu, mu, mu, mu])
 
 
 def p_b_given_a(t, Q):
     """
-    This function calculates the probability of observing the
-    nucleotide b given a, t and Q. a is the starting nucleotide,
-    while b is the end nucleotide. t is the total time of the interval.
+    Calculate the probability of observing a nucleotide b given a starting nucleotide a, a set of time intervals, and corresponding rate matrices.
 
-    P(b = bb | a == aa, Q, t)
+    For each pair of nucleotides (a, b), the function computes the probability by first summing the products of each time interval with its corresponding rate matrix, and then applying the matrix exponential.
 
-    Parameters
-    ----------
-    t : numeric
-        Total time of the interval (from a/b to c)
-    Q : numpy array
-        A 4x4 rate matrix for any substitution model
+    :param t: Total time intervals (list or array-like) over which the process is considered.
+    :type t: numeric or list of numeric
+    :param Q: A list or array of 4x4 rate matrices for a substitution model.
+    :type Q: list or numpy.ndarray
+    :return: A list of tuples of the form (starting nucleotide, ending nucleotide, probability).
+    :rtype: list
     """
     nt = ["A", "G", "C", "T"]
     mat = np.zeros((4, 4))
@@ -48,31 +48,28 @@ def p_b_given_a(t, Q):
 @nb.jit(nopython=True)
 def JC69_analytical_integral(aa, bb, cc, dd, t, mu, k):
     """
-    This function calculates the probability of observing the
-    nucleotides bb, cc and dd given aa, t and mu. aa and bb are the starting
-    nucleotides, while cc is the end nucleotide. dd is the nucleotide at
-    the time of coalescent. t is the total time of the interval. The
-    returned value corresponds to integrating the coalescent to d over
-    the entirety of t.
+    Calculate the integrated probability for observing nucleotides bb, cc, and dd given a starting nucleotide aa, a mutation rate mu, and a coalescent rate k.
 
-    P(b = bb, c == cc, d == dd | a == aa, mu, t)
+    This corresponds to computing:
+        P(b = bb, c = cc, d = dd | a = aa, mu, t)
+    by integrating the coalescent process over the interval t.
 
-          c     ^
-          |     |
-        __d__   | t
-       |     |  |
-       a     b  |
-
-    Parameters
-    ----------
-    aa, bb, cc, dd : integer or string
-        nucleotide at a, b, c and d respectively
-    t : numeric
-        Total time of the interval (from a/b/c to d)
-    mu : numeric
-        The mutation rate for the JC69 model
-    k : numeric
-        The coalescent rate
+    :param aa: Nucleotide at position a (integer or string).
+    :type aa: int or str
+    :param bb: Nucleotide at position b (integer or string).
+    :type bb: int or str
+    :param cc: Nucleotide at position c (integer or string).
+    :type cc: int or str
+    :param dd: Nucleotide at position d (integer or string).
+    :type dd: int or str
+    :param t: Total time of the interval (from positions a/b/c to d).
+    :type t: numeric
+    :param mu: Mutation rate for the JC69 model.
+    :type mu: numeric
+    :param k: Coalescent rate.
+    :type k: numeric
+    :return: The integrated probability.
+    :rtype: numeric
     """
     alpha = 3 / 4 if aa == dd else -1 / 4
     beta = 3 / 4 if dd == bb else -1 / 4
@@ -102,19 +99,16 @@ def JC69_analytical_integral(aa, bb, cc, dd, t, mu, k):
 
 def p_b_c_given_a_JC69_analytical(t, mu, k):
     """
-    This function returns a data frame with the values of
-    P(b, c | a) for all combinations of nucleotides.
+    Compute the probability P(b, c | a) for all combinations of nucleotides under the JC69 model.
 
-    Parameters
-    ----------
-    t : numeric
-        Total time of the interval (from a/b/c to d)
-    mu : numeric
-        The mutation rate for the JC69 model
-    k : numeric
-        The coalescent rate
-    Returns:
-        A list of tuples (a, b, c, prob) where a, b, c are nucleotide letters.
+    :param t: Total time of the interval (from positions a/b/c to d).
+    :type t: numeric
+    :param mu: Mutation rate for the JC69 model.
+    :type mu: numeric
+    :param k: Coalescent rate.
+    :type k: numeric
+    :return: A list of tuples (a, b, c, probability) where a, b, and c are nucleotide letters.
+    :rtype: list
     """
     nt = ["A", "G", "C", "T"]
     result = []
@@ -131,35 +125,31 @@ def p_b_c_given_a_JC69_analytical(t, mu, k):
 @nb.jit(nopython=True)
 def JC69_analytical_integral_double(aa, bb, cc, dd, ee, ff, t, mu):
     """
-    This function calculates the probability of observing the
-    nucleotides bb, cc, dd, ee and ff given aa, t and mu. aa, bb
-    and cc are the starting nucleotides, while dd is the end nucleotide.
-    ee is the nucleotide at the time of the first coalescent, while
-    ff is the nucleotide at the time of the second coalescent. t is the
-    total time of the interval. The returned value corresponds to integrating
-    the coalescent to e and f over the entirety of t.
+    Calculate the integrated probability for observing nucleotides bb, cc, dd, ee, and ff  given a starting nucleotide aa, using the JC69 model.
 
-    Note that the coalescent rate is always 1 between two sequences, and 3
-    between 3 sequences.
+    This computes:
+        P(b = bb, c = cc, d = dd, e = ee, f = ff | a = aa, mu, t)
+    by integrating over the coalescent process for two coalescent events.
+    Note: The coalescent rate is 1 for two sequences and 3 for three sequences.
 
-    P(b = bb, c == cc, d == dd, e == ee, f == ff | a == aa, Q, t)
-
-              d       ^
-              |       |
-           ___f___    |
-          |       |   | t
-        __e__     |   |
-       |     |    |   |
-       a     b    c   |
-
-    Parameters
-    ----------
-    aa, bb, cc, dd, ee, ff : integer or string
-        nucleotide at a, b, c, d, e and f, respectively
-    t : numeric
-        Total time of the interval (from a/b/c to d)
-    mu : numeric
-        The mutation rate for the JC69 model
+    :param aa: Nucleotide at position a (integer or string).
+    :type aa: int or str
+    :param bb: Nucleotide at position b (integer or string).
+    :type bb: int or str
+    :param cc: Nucleotide at position c (integer or string).
+    :type cc: int or str
+    :param dd: Nucleotide at position d (integer or string).
+    :type dd: int or str
+    :param ee: Nucleotide at the first coalescent event (integer or string).
+    :type ee: int or str
+    :param ff: Nucleotide at the second coalescent event (integer or string).
+    :type ff: int or str
+    :param t: Total time of the interval.
+    :type t: numeric
+    :param mu: Mutation rate for the JC69 model.
+    :type mu: numeric
+    :return: The integrated probability.
+    :rtype: numeric
     """
 
     alpha = 3 / 4 if aa == ee else -1 / 4
@@ -419,17 +409,14 @@ def JC69_analytical_integral_double(aa, bb, cc, dd, ee, ff, t, mu):
 
 def p_b_c_d_given_a_JC69_analytical(t, mu):
     """
-    This function returns a data frame with the values of
-    P(b, c, d | a) for all combinations of nucleotides.
+    Compute the probability P(b, c, d | a) for all nucleotide combinations under the JC69 model.
 
-    Parameters
-    ----------
-    t : numeric
-        Total time of the interval (from a/b/c to d)
-    mu : numeric
-        The mutation rate for the JC69 model
-    Returns:
-        A list of tuples (a, b, c, d, prob) where a, b, c, and d are nucleotide letters.
+    :param t: Total time of the interval (from positions a/b/c to d).
+    :type t: numeric
+    :param mu: Mutation rate for the JC69 model.
+    :type mu: numeric
+    :return: A list of tuples (a, b, c, d, probability) where a, b, c, and d are nucleotide letters.
+    :rtype: list
     """
     nt = ["A", "G", "C", "T"]
     result = []
@@ -449,21 +436,15 @@ def p_b_c_d_given_a_JC69_analytical(t, mu):
 
 def b_c_d_given_a_to_dict_a_b_c_d(data):
     """
-    Convert a list of tuples (a, b, c, d, prob) into a nested dictionary
-    such that:
+    Convert a list of tuples (a, b, c, d, probability) into a nested dictionary.
 
-        dct[a][b][c][d] = prob
+    The resulting dictionary is structured as:
+        dct[a][b][c][d] = probability
 
-    Parameters
-    ----------
-    data : list of tuples
-        Each tuple should be of the form (a, b, c, d, prob), where a, b, c, d
-        are nucleotide letters and prob is the probability.
-
-    Returns
-    -------
-    dict
-        Nested dictionary mapping nucleotides as described.
+    :param data: List of tuples (a, b, c, d, probability), where a, b, c, d are nucleotide letters.
+    :type data: list
+    :return: Nested dictionary mapping nucleotide combinations to probability.
+    :rtype: dict
     """
     dct = {}
     for a, b, c, d, prob in data:
@@ -479,20 +460,15 @@ def b_c_d_given_a_to_dict_a_b_c_d(data):
 
 def b_c_given_a_to_dict_a_b_c(data):
     """
-    Convert a list of tuples (a, b, c, prob) into a nested dictionary such that:
+    Convert a list of tuples (a, b, c, probability) into a nested dictionary.
 
-        dct[a][b][c] = prob
+    The resulting dictionary is structured as:
+        dct[a][b][c] = probability
 
-    Parameters
-    ----------
-    data : list of tuples
-        Each tuple should be (a, b, c, prob), where a, b, c are nucleotide letters
-        and prob is the associated probability.
-
-    Returns
-    -------
-    dict
-        A nested dictionary mapping as described.
+    :param data: List of tuples (a, b, c, probability).
+    :type data: list
+    :return: Nested dictionary mapping nucleotide combinations to probability.
+    :rtype: dict
     """
     dct = {}
     for a, b, c, prob in data:
@@ -506,19 +482,15 @@ def b_c_given_a_to_dict_a_b_c(data):
 
 def b_given_a_to_dict_a_b(data):
     """
-    Convert a list of tuples (a, b, prob) into a nested dictionary such that:
+    Convert a list of tuples (a, b, probability) into a nested dictionary.
 
-        dct[a][b] = prob
+    The resulting dictionary is structured as:
+        dct[a][b] = probability
 
-    Parameters
-    ----------
-    data : list of tuples
-        Each tuple should be in the form (a, b, prob), where a and b are nucleotide letters.
-
-    Returns
-    -------
-    dict
-        A dictionary mapping each 'a' to a dictionary mapping 'b' to its probability.
+    :param data: List of tuples (a, b, probability).
+    :type data: list
+    :return: Dictionary mapping nucleotide 'a' to a dictionary mapping 'b' to probability.
+    :rtype: dict
     """
     dct = {}
     for a, b, prob in data:
@@ -547,42 +519,59 @@ def calc_emissions_single_JC69(
     coal_rate_2,
 ):
     """
-    This function returns the emission probabilities of a hidden
-    state contining two coalescent events at different time intervals.
+    Compute the emission probabilities for a hidden state containing two coalescent events
+    occurring at different time intervals.
 
-                    _________
-                   |         |
-         ---------abc0-----  |
-               ____|___      |
-              |        |     |
-         ----ab1-------c1--  |
-              |        |     |
-         ----ab0-----  |     |
-            __|__      |     |
-           |     |     |     |
-         --a1----b1--  |     |
-           |     |     |     |
-           a0    b0    c0    d0
+    The hidden state is represented by the following diagram:
 
-    Parameters
-    ----------
-    a0_a1_t_vec, b0_b1_t_vec, c0_c1_t_vec,
-    d0_abc0_t_vec, ab0_ab1_t_vec : numeric list
-        Each list contains the interval time for a site to mutate
-        with a certain mutation rate, specified by *mu_vec
-    a1b1_ab0_t, ab1c1_abc0_t : numeric
-        Time interval when the first and the second coalescent
-        can happen, respectively.
-    a0_a1_mu_vec, b0_b1_mu_vec, c0_c1_mu_vec,
-    d0_abc0_mu_vec, ab0_ab1_mu_vec : numeric list
-        Each list contains the mutation rates for each interval
-        defined in *t_vec
-    a1b1_ab0_mu, ab1c1_abc0_mu : numeric
-        Mutation rates for the first and second coalescent intervals,
-        respectively.
-    coal_rate_1, coal_rate_2 : numeric
-        Coalescent rate  of the first and second coalescent events,
-        respectively.
+                        _________
+                       |         |
+             ---------abc0-----  |
+                   ____|___      |
+                  |        |     |
+             ----ab1-------c1--  |
+                  |        |     |
+             ----ab0-----  |     |
+                __|__      |     |
+               |     |     |     |
+             --a1----b1--  |     |
+               |     |     |     |
+               a0    b0    c0    d0
+
+    :param a0_a1_t_vec: List of time intervals for mutation from a0 to a1.
+    :type a0_a1_t_vec: list of numeric
+    :param b0_b1_t_vec: List of time intervals for mutation from b0 to b1.
+    :type b0_b1_t_vec: list of numeric
+    :param c0_c1_t_vec: List of time intervals for mutation from c0 to c1.
+    :type c0_c1_t_vec: list of numeric
+    :param d0_abc0_t_vec: List of time intervals for mutation from d0 to abc0.
+    :type d0_abc0_t_vec: list of numeric
+    :param ab0_ab1_t_vec: List of time intervals for mutation from ab0 to ab1.
+    :type ab0_ab1_t_vec: list of numeric
+    :param a1b1_ab0_t: Time interval for the first coalescent event.
+    :type a1b1_ab0_t: numeric
+    :param ab1c1_abc0_t: Time interval for the second coalescent event.
+    :type ab1c1_abc0_t: numeric
+    :param a0_a1_mu_vec: Mutation rates for the intervals in a0_a1_t_vec.
+    :type a0_a1_mu_vec: list of numeric
+    :param b0_b1_mu_vec: Mutation rates for the intervals in b0_b1_t_vec.
+    :type b0_b1_mu_vec: list of numeric
+    :param c0_c1_mu_vec: Mutation rates for the intervals in c0_c1_t_vec.
+    :type c0_c1_mu_vec: list of numeric
+    :param d0_abc0_mu_vec: Mutation rates for the intervals in d0_abc0_t_vec.
+    :type d0_abc0_mu_vec: list of numeric
+    :param ab0_ab1_mu_vec: Mutation rates for the intervals in ab0_ab1_t_vec.
+    :type ab0_ab1_mu_vec: list of numeric
+    :param a1b1_ab0_mu: Mutation rate for the first coalescent interval.
+    :type a1b1_ab0_mu: numeric
+    :param ab1c1_abc0_mu: Mutation rate for the second coalescent interval.
+    :type ab1c1_abc0_mu: numeric
+    :param coal_rate_1: Coalescent rate for the first coalescent event.
+    :type coal_rate_1: numeric
+    :param coal_rate_2: Coalescent rate for the second coalescent event.
+    :type coal_rate_2: numeric
+    :return: A dictionary mapping concatenated nucleotide strings to their emission probabilities.
+    :rtype: dict
     """
 
     # a0 to a1
@@ -668,31 +657,43 @@ def calc_emissions_double_JC69(
     d0_abc0_mu_vec,
 ):
     """
-    This function returns the emission probabilities of a hidden
-    state contining two coalescent events at the same time interval.
+    Compute the emission probabilities for a hidden state containing two coalescent events
+    occurring in the same time interval.
 
-                    _________
-                   |         |
-         ---------abc0-----  |
-               ____|___      |
-            __|__      |     |
-           |     |     |     |
-         --a1----b1----c1--  |
-           |     |     |     |
-           a0    b0    c0    d0
+    The hidden state is represented by the following diagram:
 
-    Parameters
-    ----------
-    a0_a1_t_vec, b0_b1_t_vec, c0_c1_t_vec, d0_abc0_t_vec : numeric list
-        Each list contains the interval time for a site to mutate
-        with a certain mutation rate, specified by *mu_vec
-    a1b1c1_abc0_t : numeric
-        Time interval for the coalescent events to happen.
-    a0_a1_mu_vec, b0_b1_mu_vec, c0_c1_mu_vec, d0_abc0_mu_vec : numeric list
-        Each list contains the mutation rates for each interval
-        defined in *t_vec
-    a1b1c1_abc0_mu : numeric
-        Mutation rates for the interval where coalescents happen.
+                        _________
+                       |         |
+             ---------abc0-----  |
+                   ____|___      |
+                __|__      |     |
+               |     |     |     |
+             --a1----b1----c1--  |
+               |     |     |     |
+               a0    b0    c0    d0
+
+    :param a0_a1_t_vec: List of time intervals for mutation from a0 to a1.
+    :type a0_a1_t_vec: list of numeric
+    :param b0_b1_t_vec: List of time intervals for mutation from b0 to b1.
+    :type b0_b1_t_vec: list of numeric
+    :param c0_c1_t_vec: List of time intervals for mutation from c0 to c1.
+    :type c0_c1_t_vec: list of numeric
+    :param d0_abc0_t_vec: List of time intervals for mutation from d0 to abc0.
+    :type d0_abc0_t_vec: list of numeric
+    :param a1b1c1_abc0_t: Time interval for the coalescent events.
+    :type a1b1c1_abc0_t: numeric
+    :param a0_a1_mu_vec: Mutation rates for intervals in a0_a1_t_vec.
+    :type a0_a1_mu_vec: list of numeric
+    :param b0_b1_mu_vec: Mutation rates for intervals in b0_b1_t_vec.
+    :type b0_b1_mu_vec: list of numeric
+    :param c0_c1_mu_vec: Mutation rates for intervals in c0_c1_t_vec.
+    :type c0_c1_mu_vec: list of numeric
+    :param a1b1c1_abc0_mu: Mutation rate for the coalescent interval.
+    :type a1b1c1_abc0_mu: numeric
+    :param d0_abc0_mu_vec: Mutation rates for intervals in d0_abc0_t_vec.
+    :type d0_abc0_mu_vec: list of numeric
+    :return: A dictionary mapping concatenated nucleotide strings to their emission probabilities.
+    :rtype: dict
     """
 
     # a0 to a1
@@ -774,39 +775,73 @@ def get_emission_prob_mat(
     cut_ABC="standard",
 ):
     """
-    This function returns the emission probabilities of all hidden states
-    given a set of population genetics parameters. 
-        
-            |          |
-            |  ABC  |\ \
-            | AB |\ \ \ \
-            / /\ \ \ \ \ \
-           / /  \ \ \ \ \ \
-           A      B   C   D
-        
-    Parameters
-    ----------
-    t_A, t_B : numeric
-        Time between present time and the first speciation time for
-        species A and B, respectively. They show be equal. 
-    t_AB : numeric
-        Time between speciation events.
-    t_C : numeric
-        Time between present time and the second speciation time for 
-        species C. It should be t_A (or t_B) + t_AB.
-    t_upper : numeric
-        Time between the last ABC interval and the third speciation time.
-    t_peak : numeric
-        Mean divergence time between ABC and D after the third speciation time.
-        It should be 4*coal_ABC (or it can be estimated instead). 
-    rho_A, rho_B, rho_AB, rho_C, rho_ABC : numeric
-        Recombination rates for the A, B, AB, C and ABC intervals.
-    coal_A, coal_B, coal_AB, coal_C, coal_ABC : numeric
-        Coalescent rates for the A, B, AB, C and ABC intervals.
-    n_int_AB, n_int_ABC : integer
-        Number of intervals in the AB and ABC parts of the tree. 
-    mu_A, mu_B, mu_C, mu_D, mu_AB, mu_ABC : numeric
-        Mutation rate for the A, B, C, D, AB and ABC intervals.
+    Compute the emission probabilities for all hidden states given a set of population genetics parameters.
+
+    The hidden state structure is represented as:
+
+             |          |
+             |  ABC  |\ \
+             | AB |\ \ \ \
+             / /\ \ \ \ \ \
+            / /  \ \ \ \ \ \
+            A      B   C   D
+
+    :param t_A: Time between present and the first speciation event for species A.
+    :type t_A: numeric
+    :param t_B: Time between present and the first speciation event for species B (should equal t_A).
+    :type t_B: numeric
+    :param t_AB: Time between speciation events.
+    :type t_AB: numeric
+    :param t_C: Time between present and the second speciation event for species C (should equal t_A + t_AB).
+    :type t_C: numeric
+    :param t_upper: Time between the last ABC interval and the third speciation event.
+    :type t_upper: numeric
+    :param t_out: Time from present to the third speciation event for species D (includes divergence time).
+    :type t_out: numeric
+    :param rho_A: Recombination rate for species A.
+    :type rho_A: numeric
+    :param rho_B: Recombination rate for species B.
+    :type rho_B: numeric
+    :param rho_AB: Recombination rate for the AB interval.
+    :type rho_AB: numeric
+    :param rho_C: Recombination rate for species C.
+    :type rho_C: numeric
+    :param rho_ABC: Recombination rate for the ABC interval.
+    :type rho_ABC: numeric
+    :param coal_A: Coalescent rate for species A.
+    :type coal_A: numeric
+    :param coal_B: Coalescent rate for species B.
+    :type coal_B: numeric
+    :param coal_AB: Coalescent rate for the AB interval.
+    :type coal_AB: numeric
+    :param coal_C: Coalescent rate for species C.
+    :type coal_C: numeric
+    :param coal_ABC: Coalescent rate for the ABC interval.
+    :type coal_ABC: numeric
+    :param n_int_AB: Number of intervals in the AB portion of the tree.
+    :type n_int_AB: int
+    :param n_int_ABC: Number of intervals in the ABC portion of the tree.
+    :type n_int_ABC: int
+    :param mu_A: Mutation rate for species A.
+    :type mu_A: numeric
+    :param mu_B: Mutation rate for species B.
+    :type mu_B: numeric
+    :param mu_C: Mutation rate for species C.
+    :type mu_C: numeric
+    :param mu_D: Mutation rate for species D.
+    :type mu_D: numeric
+    :param mu_AB: Mutation rate for the AB interval.
+    :type mu_AB: numeric
+    :param mu_ABC: Mutation rate for the ABC interval.
+    :type mu_ABC: numeric
+    :param cut_AB: Option for cutpoints in the AB interval; if "standard", default cutpoints are computed.
+    :type cut_AB: str or array-like
+    :param cut_ABC: Option for cutpoints in the ABC interval; if "standard", default cutpoints are computed.
+    :type cut_ABC: str or array-like
+    :return: A tuple containing:
+             - A list of state identifiers (tuples).
+             - A list of corresponding emission probability dictionaries.
+    :rtype: tuple(list, list)
     """
     n_markov_states = (
         n_int_AB * n_int_ABC + n_int_ABC * 3 + 3 * comb(n_int_ABC, 2, exact=True)
@@ -1091,42 +1126,78 @@ def get_emission_prob_mat_introgression(
     cut_ABC="standard",
 ):
     """
-    This function returns the emission probabilities of all hidden states
-    given a set of population genetics parameters. 
-        
-            |          |
-            |  ABC  |\ \
-            | AB |\ \ \ \
-            / /\ \ \ \ \ \
-           / /  \ \ \ \ \ \
-           A      B   C   D
-        
-    Parameters
-    ----------
-    t_A : numeric
-        Time between present time and the first speciation time for
-        species A. 
-    t_B : numeric
-        Time between present time and the migration event for
-        species A. 
-    t_AB : numeric
-        Time between speciation events.
-    t_C : numeric
-        Time between present time and the migration event for
-        species C. 
-    t_upper : numeric
-        Time between the last ABC interval and the third speciation time.
-    t_peak : numeric
-        Mean divergence time between ABC and D after the third speciation time.
-        It should be 4*coal_ABC (or it can be estimated instead). 
-    rho_A, rho_B, rho_AB, rho_C, rho_ABC : numeric
-        Recombination rates for the A, B, AB, C and ABC intervals.
-    coal_A, coal_B, coal_AB, coal_C, coal_ABC : numeric
-        Coalescent rates for the A, B, AB, C and ABC intervals.
-    n_int_AB, n_int_ABC : integer
-        Number of intervals in the AB and ABC parts of the tree. 
-    mu_A, mu_B, mu_C, mu_D, mu_AB, mu_ABC : numeric
-        Mutation rate for the A, B, C, D, AB and ABC intervals.
+    Compute the emission probabilities for all hidden states in an introgression model 
+    given a set of population genetics parameters.
+
+    The hidden state structure is represented as:
+
+             |          |
+             |  ABC  |\ \
+             | AB |\ \ \ \
+             / /\ \ \ \ \ \
+            / /  \ \ \ \ \ \
+            A      B   C   D
+
+    :param t_A: Time between present and the first speciation event for species A.
+    :type t_A: numeric
+    :param t_B: Time between present and the migration event for species A.
+    :type t_B: numeric
+    :param t_AB: Time between speciation events.
+    :type t_AB: numeric
+    :param t_C: Time between present and the migration event for species C.
+    :type t_C: numeric
+    :param t_upper: Time between the last ABC interval and the third speciation event.
+    :type t_upper: numeric
+    :param t_out: Time from present to the third speciation event for species D (includes divergence time).
+    :type t_out: numeric
+    :param t_m: Additional time parameter associated with migration.
+    :type t_m: numeric
+    :param rho_A: Recombination rate for species A.
+    :type rho_A: numeric
+    :param rho_B: Recombination rate for species B.
+    :type rho_B: numeric
+    :param rho_AB: Recombination rate for the AB interval.
+    :type rho_AB: numeric
+    :param rho_C: Recombination rate for species C.
+    :type rho_C: numeric
+    :param rho_ABC: Recombination rate for the ABC interval.
+    :type rho_ABC: numeric
+    :param coal_A: Coalescent rate for species A.
+    :type coal_A: numeric
+    :param coal_B: Coalescent rate for species B.
+    :type coal_B: numeric
+    :param coal_AB: Coalescent rate for the AB interval.
+    :type coal_AB: numeric
+    :param coal_BC: Coalescent rate for the BC interval.
+    :type coal_BC: numeric
+    :param coal_C: Coalescent rate for species C.
+    :type coal_C: numeric
+    :param coal_ABC: Coalescent rate for the ABC interval.
+    :type coal_ABC: numeric
+    :param n_int_AB: Number of intervals in the AB part of the tree.
+    :type n_int_AB: int
+    :param n_int_ABC: Number of intervals in the ABC part of the tree.
+    :type n_int_ABC: int
+    :param mu_A: Mutation rate for species A.
+    :type mu_A: numeric
+    :param mu_B: Mutation rate for species B.
+    :type mu_B: numeric
+    :param mu_C: Mutation rate for species C.
+    :type mu_C: numeric
+    :param mu_D: Mutation rate for species D.
+    :type mu_D: numeric
+    :param mu_AB: Mutation rate for the AB interval.
+    :type mu_AB: numeric
+    :param mu_ABC: Mutation rate for the ABC interval.
+    :type mu_ABC: numeric
+    :param cut_AB: Option for cutpoints in the AB interval; if "standard", default cutpoints are computed.
+    :type cut_AB: str or array-like
+    :param cut_ABC: Option for cutpoints in the ABC interval; if "standard", default cutpoints are computed.
+    :type cut_ABC: str or array-like
+    :return: A tuple containing:
+             - A list of state identifiers (tuples).
+             - A list of corresponding emission probability dictionaries.
+    :rtype: tuple(list, list)
     """
     n_markov_states = (
         2 * n_int_AB * n_int_ABC + n_int_ABC * 3 + 3 * comb(n_int_ABC, 2, exact=True)

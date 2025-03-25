@@ -53,9 +53,17 @@ def compute_matrices_end_wrapper(
     omega_end_masks,
     num_combinations,
 ):
-    """
-    Parallel wrapper using joblib to compute compute_matrix_start_end over all combinations.
-    """
+    """Parallel wrapper that computes the sliced matrix result for each combination by invoking compute_matrix_end on each set of inputs; for every index from 0 to num_combinations-1, it multiplies the corresponding probability matrix (from prob_mats) with the result of slicing the exponential_time matrix using the corresponding omega_end_mask, and aggregates all results into a single numpy array; the computations are performed in parallel using joblib.Parallel with ncpu.N_CPU workers.
+    :param prob_mats: List or array of probability matrices where each element is a numpy array.
+    :type prob_mats: list or np.ndarray.
+    :param exponential_time: Numpy array representing the matrix computed by applying the exponential function to the transition matrix multiplied by time.
+    :type exponential_time: np.ndarray.
+    :param omega_end_masks: List or array of boolean vectors used to mask the columns of the exponential_time matrix for each combination.
+    :type omega_end_masks: list or np.ndarray of bool.
+    :param num_combinations: Total number of combinations (iterations) over which to compute the sliced matrix.
+    :type num_combinations: int.
+    :return: Numpy array containing the resulting matrices computed for each combination.
+    :rtype: np.ndarray."""
     results = Parallel(n_jobs=ncpu.N_CPU)(
         delayed(compute_matrix_end)(prob_mats[i], exponential_time, omega_end_masks[i])
         for i in range(num_combinations)
@@ -70,9 +78,19 @@ def compute_matrices_start_end_wrapper(
     omega_end_masks,
     num_combinations,
 ):
-    """
-    Parallel wrapper using joblib to compute compute_matrix_start_end over all combinations.
-    """
+    """Parallel wrapper that computes the sliced matrix result for each combination by invoking compute_matrix_start_end on each set of inputs; for every index from 0 to num_combinations-1, it multiplies the corresponding probability matrix (from prob_mats) with the result of slicing the exponential_time matrix using the corresponding omega_start_mask and omega_end_mask, and aggregates all results into a single numpy array; the computations are performed in parallel using joblib.Parallel with ncpu.N_CPU workers.
+    :param prob_mats: List or array of probability matrices where each element is a numpy array.
+    :type prob_mats: list or np.ndarray.
+    :param exponential_time: Numpy array representing the matrix computed by applying the exponential function to the transition matrix multiplied by time.
+    :type exponential_time: np.ndarray.
+    :param omega_start_masks: List or array of boolean vectors used to mask the rows of the exponential_time matrix for each combination.
+    :type omega_start_masks: list or np.ndarray of bool.
+    :param omega_end_masks: List or array of boolean vectors used to mask the columns of the exponential_time matrix for each combination.
+    :type omega_end_masks: list or np.ndarray of bool.
+    :param num_combinations: Total number of combinations (iterations) over which to compute the sliced matrix.
+    :type num_combinations: int.
+    :return: Numpy array containing the resulting matrices computed for each combination.
+    :rtype: np.ndarray."""
     results = Parallel(n_jobs=ncpu.N_CPU)(
         delayed(compute_matrix_start_end)(
             prob_mats[i], exponential_time, omega_start_masks[i], omega_end_masks[i]

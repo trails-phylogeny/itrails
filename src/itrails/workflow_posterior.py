@@ -14,7 +14,7 @@ from itrails.yaml_helpers import load_config
 
 
 def main():
-    """Command-line entry point for running the optimizer."""
+    """Command-line entry point for running posterior decoding."""
     parser = argparse.ArgumentParser(
         description="Optimize workflow using TRAILS",
         usage="itrails-optimize <config.yaml> --output OUTPUT_PATH | itrails-optimize example --output OUTPUT_PATH",

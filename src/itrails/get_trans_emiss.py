@@ -20,42 +20,44 @@ def trans_emiss_calc(
     cut_ABC="standard",
 ):
     """
-    This function calculates the emission and transition probabilities
-    given a certain set of parameters.
+    Calculate the emission and transition probabilities given a set of parameters.
 
-    Parameters
-    ----------
-    t_A : numeric
-        Time in generations from present to the first speciation event for species A
-        (times mutation rate)
-    t_B : numeric
-        Time in generations from present to the first speciation event for species B
-        (times mutation rate)
-    t_C : numeric
-        Time in generations from present to the second speciation event for species C
-        (times mutation rate)
-    t_2 : numeric
-        Time in generations from the first speciation event to the second speciation event
-        (times mutation rate)
-    t_upper : numeric
-        Time in generations between the end of the second-to-last interval and the third
-        speciation event (times mutation rate)
-    t_out : numeric
-        Time in generations from present to the third speciation event for species D, plus
-        the divergence between the ancestor of D and the ancestor of A, B and C at the time
-        of the third speciation event (times mutation rate)
-    N_AB : numeric
-        Effective population size between speciation events (times mutation rate)
-    N_ABC : numeric
-        Effective population size in deep coalescence, before the second speciation event
-        (times mutation rate)
-    r : numeric
-        Recombination rate per site per generation (divided by mutation rate)
-    n_int_AB : integer
-        Number of discretized time intervals between speciation events
-    n_int_ABC : integer
-        Number of discretized time intervals in deep coalescent
+    :param t_A: Time in generations from the present to the first speciation event for species A (times mutation rate)
+    :type t_A: numeric
+    :param t_B: Time in generations from the present to the first speciation event for species B (times mutation rate)
+    :type t_B: numeric
+    :param t_C: Time in generations from the present to the second speciation event for species C (times mutation rate)
+    :type t_C: numeric
+    :param t_2: Time in generations from the first speciation event to the second speciation event (times mutation rate)
+    :type t_2: numeric
+    :param t_upper: Time in generations between the end of the second-to-last interval and the third speciation event (times mutation rate)
+    :type t_upper: numeric
+    :param t_out: Time in generations from the present to the third speciation event for species D, plus the divergence between the ancestor of D and the ancestor of A, B, and C at the time of the third speciation event (times mutation rate)
+    :type t_out: numeric
+    :param N_AB: Effective population size between speciation events (times mutation rate)
+    :type N_AB: numeric
+    :param N_ABC: Effective population size in deep coalescence, before the second speciation event (times mutation rate)
+    :type N_ABC: numeric
+    :param r: Recombination rate per site per generation (divided by mutation rate)
+    :type r: numeric
+    :param n_int_AB: Number of discretized time intervals between speciation events
+    :type n_int_AB: int
+    :param n_int_ABC: Number of discretized time intervals in deep coalescent
+    :type n_int_ABC: int
+    :param cut_AB: Option for handling cutoffs between speciation events for species A and B. Default is "standard".
+    :type cut_AB: str
+    :param cut_ABC: Option for handling cutoffs in deep coalescence for species A, B, and C. Default is "standard".
+    :type cut_ABC: str
+
+    :return: A tuple containing:
+             - **a**: Transition probability matrix.
+             - **b**: Emission probability matrix.
+             - **pi**: Vector of starting probabilities of the hidden states.
+             - **hidden_names**: Mapping from indices to hidden state names.
+             - **observed_names**: Mapping from indices to observed names.
+    :rtype: tuple(numpy.ndarray, numpy.ndarray, numpy.ndarray, dict, dict)
     """
+
     # Reference Ne (for normalization)
     N_ref = N_ABC
     # Speciation times (in coalescent units, i.e. number of generations / N_ref)

@@ -5,6 +5,9 @@ from numba import njit
 
 @njit
 def get_obs_state_dct():
+    """Returns a list of all possible 4-character nucleotide state strings based on 'A', 'C', 'T', 'G' and, if not already present, appends additional states using 'N'.
+    :return: list of observed state strings.
+    :rtype: list[str]."""
     lst = []
     for a in ["A", "C", "T", "G"]:
         for b in ["A", "C", "T", "G"]:
@@ -22,6 +25,9 @@ def get_obs_state_dct():
 
 @njit
 def get_obs_state_dct_new_method():
+    """Returns a list of observed state strings using a new method that generates 3-character nucleotide strings from 'A', 'C', 'T', 'G' and appends additional states using 'N' if not already present.
+    :return: list of observed state strings using the new method.
+    :rtype: list[str]."""
     lst = []
     for a in ["A", "C", "T", "G"]:
         for b in ["A", "C", "T", "G"]:
@@ -37,6 +43,11 @@ def get_obs_state_dct_new_method():
 
 @njit
 def get_idx_state(state):
+    """Given a state index, returns an array of resolved state indices by recursively replacing any ambiguous 'N' in the observed state string with 'A', 'C', 'T', and 'G'.
+    :param state: index of the observed state in the state dictionary.
+    :type state: int.
+    :return: numpy array of resolved state indices.
+    :rtype: np.ndarray."""
     lst = get_obs_state_dct()
     st = lst[state]
     idx = st.find("N")
@@ -55,6 +66,11 @@ def get_idx_state(state):
 
 @njit
 def get_idx_state_new_method(state):
+    """Given a state index using the new observed state dictionary, returns an array of resolved state indices by recursively replacing any ambiguous 'N' in the observed state string with 'A', 'C', 'T', and 'G'.
+    :param state: index of the observed state in the new state dictionary.
+    :type state: int.
+    :return: numpy array of resolved state indices.
+    :rtype: np.ndarray."""
     lst = get_obs_state_dct_new_method()
     st = lst[state]
     idx = st.find("N")
@@ -72,27 +88,21 @@ def get_idx_state_new_method(state):
 
 
 def maf_parser(file, sp_lst):
-    """
-    Parameters
-    ----------
-    file : str
-        Path to MAF file
-    sp_lst : list of str
-        List of length 4 with species names
-    """
+    """Parses a MAF file to extract sequence alignments for the specified species. for each alignment block, collects sequences for species in sp_lst, replaces gaps '-' with 'N', and converts each column of nucleotides to an index using the observed state dictionary from get_obs_state_dct.
+    :param file: path to the MAF file. :type file: str.
+    :param sp_lst: list of species names (expected length 4) to extract sequences for.
+    :type sp_lst: list[str].
+    :return: list of numpy arrays where each array contains the state indices for a block.
+    :rtype: list[np.ndarray]."""
     order_st = get_obs_state_dct()
     total_lst = []
-    # Start loglik accumulator
     loglik_acc = 0
-    # For each block
     for multiple_alignment in AlignIO.parse(file, "maf"):
-        # Save sequence
         dct = {}
         for seqrec in multiple_alignment:
             if seqrec.name.split(".")[0] in sp_lst:
                 dct[seqrec.name.split(".")[0]] = str(seqrec.seq).replace("-", "N")
         if len(dct) == 4:
-            # Convert sequence to index
             idx_lst = np.zeros((len(seqrec.seq)), dtype=np.int64)
             for i in range(len(seqrec.seq)):
                 idx_lst[i] = order_st.index(
@@ -103,27 +113,21 @@ def maf_parser(file, sp_lst):
 
 
 def maf_parser_new_method(file, sp_lst):
-    """
-    Parameters
-    ----------
-    file : str
-        Path to MAF file
-    sp_lst : list of str
-        List of length 4 with species names
+    """Parses a MAF file to extract sequence alignments for the specified species using the new observed state dictionary. for each alignment block, collects sequences for species in sp_lst, replaces gaps '-' with 'N', and converts each column of nucleotides to an index using the observed state dictionary from get_obs_state_dct_new_method.
+    :param file: path to the MAF file. :type file: str.
+    :param sp_lst: list of species names (expected length 4) to extract sequences for.
+    :type sp_lst: list[str].
+    :return: list of numpy arrays where each array contains the state indices for a block. :rtype: list[np.ndarray].
     """
     order_st = get_obs_state_dct_new_method()
     total_lst = []
-    # Start loglik accumulator
     loglik_acc = 0
-    # For each block
     for multiple_alignment in AlignIO.parse(file, "maf"):
-        # Save sequence
         dct = {}
         for seqrec in multiple_alignment:
             if seqrec.name.split(".")[0] in sp_lst:
                 dct[seqrec.name.split(".")[0]] = str(seqrec.seq).replace("-", "N")
         if len(dct) == 4:
-            # Convert sequence to index
             idx_lst = np.zeros((len(seqrec.seq)), dtype=np.int64)
             for i in range(len(seqrec.seq)):
                 idx_lst[i] = order_st.index(
