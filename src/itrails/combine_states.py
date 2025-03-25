@@ -11,7 +11,7 @@ def combine_states(
     :param state_dict_1: Dictionary of states and indices for the first CTMC, can be 1 sequence or 2 sequence CTMC.
     :type state_dict_1: Numba Dictionary of Key: Tuple of int64 and Value: int64.
     :param state_dict_2: Dictionary of states and indices for the second CTMC, can only be 1 sequence CTMC.
-    :type state_dict_2: Numba Dictionary of Key: Tuple(int64, int64) and Value: int64.
+    :type state_dict_2: Numba Dictionary of Key: Tuple(int64, int64) and Value: int64
     :param state_dict_sum: Dictionary of states and indices for the combined CTMC.
     :type state_dict_sum: Numba Dictionary of Key: Tuple of int64 and Value: int64.
     :param final_probs_1: Array of final probabilities for a single key of the first CTMC.
