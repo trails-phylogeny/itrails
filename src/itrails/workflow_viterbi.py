@@ -1,7 +1,6 @@
 import argparse
+import csv
 import os
-
-import h5py
 
 from itrails.cutpoints import cutpoints_ABC
 from itrails.get_trans_emiss import trans_emiss_calc
@@ -466,10 +465,30 @@ def main():
     viterbi_result = viterbi_wrapper(a=a, b=b, pi=pi, V_lst=maf_alignment)
     output_file = os.path.join(output_path, "viterbi.h5")
 
-    with h5py.File(output_file, "w") as h5f:
-        for i, res in enumerate(viterbi_result):
-            dataset_name = f"Alignment block {i}"
-            h5f.create_dataset(dataset_name, data=res, compression="gzip")
+    with open(output_file, "w", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(
+            ["Block_idx", "position_start", "position_end", "most_likely_state"]
+        )
+        for block_idx, res in enumerate(viterbi_result):
+            if len(res) == 0:
+                continue
+            segment_start = 0
+            current_state = res[0]
+            for pos in range(1, len(res)):
+                if res[pos] != current_state:
+                    writer.writerow(
+                        [
+                            block_idx,
+                            segment_start,
+                            pos - 1,
+                            current_state,
+                        ]
+                    )
+                    segment_start = pos
+                    current_state = res[pos]
+            # Write the final segment for this block
+            writer.writerow([block_idx, segment_start, len(res) - 1, current_state])
 
     print(f"Viterbi decoding complete. Results saved to {output_file}.")
 

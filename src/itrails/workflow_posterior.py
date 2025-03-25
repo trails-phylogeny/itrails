@@ -1,4 +1,5 @@
 import argparse
+import csv
 import os
 
 from itrails.cutpoints import cutpoints_ABC
@@ -461,18 +462,28 @@ def main():
 
     print("Running posterior decoding.")
 
-    posterior_result = post_prob_wrapper(a=a, b=b, pi=pi, V_lst=maf_alignment)
+    posterior_results = post_prob_wrapper(a=a, b=b, pi=pi, V_lst=maf_alignment)
 
-    for i, res in enumerate(posterior_result):
-        # Convert the NumPy array to a list before storing it in the dictionary
-        print(f"Sample {i+1}: {res.shape}")
+    print("Writing results to file.")
 
-    ## Convert the dictionary to a JSON string
-    # json_str = json.dumps(json_result, indent=2)
-    # output_file = os.path.join(output_path, "viterbi.json")
-    # with open(output_file, "w") as f:
-    #    json.dump(json_str, f, indent=2)
-    # print(f"Posterior decoding complete. Results saved to {output_file}.")
+    output_file = os.path.join(output_path, "posterior.csv")
+    with open(output_file, "w", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+
+        if posterior_results:
+            n_states = posterior_results[0].shape[1]
+        else:
+            n_states = 0
+
+        header = ["alignment_block_idx", "position_idx"] + [
+            f"prob_state_{i}" for i in range(n_states)
+        ]
+        writer.writerow(header)
+
+        for block_idx, arr in enumerate(posterior_results):
+            for pos_idx, row in enumerate(arr):
+                writer.writerow([block_idx, pos_idx] + row.tolist())
+    print(f"Posterior decoding complete. Results saved to {output_file}.")
 
 
 if __name__ == "__main__":
