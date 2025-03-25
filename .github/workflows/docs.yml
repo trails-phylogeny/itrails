@@ -11,28 +11,37 @@ on:
     branches:
       - main
 
-
 jobs:
-  deploy:
+  build-deploy-docs:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Check out the repository
-        uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v2
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Set Up Python
+        uses: actions/setup-python@v2
         with:
-          python-version: '3.9'
+          python-version: '3.9'  # adjust if needed
 
-      - name: Install dependencies
-        run: pip install sphinx sphinx-rtd-theme
+      - name: Install Dependencies
+        run: |
+          # Install your package (editable mode to ensure __version__ is available)
+          pip install -e .
+          # Install Sphinx and theme dependencies
+          pip install sphinx sphinx-rtd-theme
 
-      - name: Build documentation
+      - name: Generate API Documentation
+        run: |
+          # Regenerate autodoc files (if needed)
+          sphinx-apidoc -o docs/source/ src/itrails
+
+      - name: Build HTML Documentation
+        working-directory: docs
         run: make html
-        working-directory: docs  # Adjust to your Sphinx docs directory
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: docs/_build/html
+          publish_dir: ./docs/_build/html
