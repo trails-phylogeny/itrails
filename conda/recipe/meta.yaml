@@ -1,0 +1,50 @@
+{% set name = "itrails" %}
+{% set version = environ.get('GIT_DESCRIBE_TAG', '0.0.0') %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  git_url: https://github.com/trails-phylogeny/itrails.git
+  git_tag: v{{ version }}
+
+build:
+  noarch: python
+  number: 0
+  script: "{{ PYTHON }} -m pip install . -vv"
+
+requirements:
+  host:
+    - python >=3.12
+    - setuptools >=61
+    - setuptools-scm >=8
+    - wheel
+    - pip
+  run:
+    - python >=3.12
+    - numpy >=1.26.4
+    - scipy >=1.13.0
+    - joblib >=1.4.2
+    - numba >=0.59.1
+    - biopython >=1.84
+    - pyyaml >=6.0.2
+    - h5py
+
+test:
+  imports:
+    - itrails
+  commands:
+    - itrails-optimize --help
+    - itrails-posterior --help
+    - itrails-viterbi --help
+
+about:
+  home: https://github.com/trails-phylogeny/itrails
+  license: MIT
+  license_file: LICENSE
+  summary: "Tree reconstruction of ancestry using incomplete lineage sorting"
+
+extra:
+  recipe-maintainers:
+    - David-M-P

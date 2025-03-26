@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "setuptools-scm", "wheel"]
+requires = ["setuptools>=61", "setuptools-scm>=8", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -16,14 +16,14 @@ maintainers = [
     {name = "Iker Rivas-González", email = "iker_rivas_gonzalez@eva.mpg.de"},
     {name = "David Martin-Pestana", email = "dmape@birc.au.dk"}
 ]
-requires-python = ">=3.6"
+requires-python = ">=3.12"
 dependencies = [
-    "numpy==1.26.4",
-    "scipy==1.13.0",
-    "joblib==1.4.2",
-    "numba==0.59.1",
-    "biopython==1.84",
-    "pyyaml==6.0.2",
+    "numpy>=1.26.4",
+    "scipy>=1.13.0",
+    "joblib>=1.4.2",
+    "numba>=0.59.1",
+    "biopython>=1.84",
+    "pyyaml>=6.0.2",
     "h5py"
 ]
 
@@ -39,6 +39,8 @@ where = ["src"]
 
 [tool.setuptools_scm]
 version_file = "src/itrails/_version.py"
+version_scheme = "guess-next-dev"
+local_scheme = "no-local-version"
 
 [project.optional-dependencies]
 docs = [

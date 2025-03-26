@@ -1,4 +1,4 @@
-iTRAILS Documentation
+iTRAILS
 =====================
 
 Welcome to **iTRAILS**, a Python toolkit for ancestral state reconstruction using incomplete lineage sorting (ILS).
