@@ -40,6 +40,13 @@ where = ["src"]
 [tool.setuptools_scm]
 version_file = "src/itrails/_version.py"
 
+[project.optional-dependencies]
+docs = [
+    "sphinx",
+    "sphinx-rtd-theme",
+    "myst-parser"
+]
+
 [project.scripts]
 itrails-optimize = "itrails.workflow_optimize:main"
 itrails-viterbi = "itrails.workflow_viterbi:main"
