@@ -25,7 +25,7 @@ jobs:
         run: python -m build
 
       - name: Publish to TestPyPI
-        if: contains(github.ref, 'a') || contains(github.ref, 'b') || contains(github.ref, 'rc')
+        if: contains(github.ref_name, 'a') || contains(github.ref_name, 'b') || contains(github.ref_name, 'rc')
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.TEST_PYPI_API_TOKEN }}
