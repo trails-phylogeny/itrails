@@ -8,6 +8,7 @@
 
 import datetime
 import os
+import re
 import sys
 
 # Add your package to sys.path
@@ -27,11 +28,17 @@ try:
 except ImportError:
     __version__ = "unknown"
 
-release = __version__
-version = ".".join(__version__.split(".")[:2]) if __version__ != "unknown" else "dev"
+# Strip off any Git commit or local metadata using regex
+# e.g. "0.1.0a73.dev1+ge16dbd8" → "0.1.0a73"
+base_version_match = re.match(r"^([0-9a-zA-Z.\-]+)", __version__)
+clean_version = base_version_match.group(1) if base_version_match else "dev"
 
-# This allows you to use |release| in your .rst files
-rst_epilog = f"\n.. |release| replace:: {release}\n"
+release = clean_version  # full version, cleaned
+version = ".".join(clean_version.split(".")[0:2])  # e.g. "0.1"
+
+html_title = f"itrails v{release} documentation"
+html_short_title = f"itrails v{release}"
+
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -57,3 +64,8 @@ html_theme = "furo"
 templates_path = ["_templates"]
 exclude_patterns = []
 html_static_path = ["_static"]
+html_css_files = ["custom.css"]
+
+
+def setup(app):
+    app.add_js_file("rtd_version.js")

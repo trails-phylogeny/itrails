@@ -1,0 +1,7 @@
+.rtd-version-selector {
+  margin-top: 1rem;
+  padding: 0.5rem;
+  background: var(--color-background-secondary);
+  border-radius: 6px;
+  font-size: 0.9em;
+}
