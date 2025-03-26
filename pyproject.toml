@@ -43,9 +43,11 @@ version_file = "src/itrails/_version.py"
 [project.optional-dependencies]
 docs = [
     "sphinx",
-    "sphinx-rtd-theme",
-    "myst-parser"
+    "furo",
+    "myst-parser",
+    "sphinx-autodoc-typehints"
 ]
+
 
 [project.scripts]
 itrails-optimize = "itrails.workflow_optimize:main"
