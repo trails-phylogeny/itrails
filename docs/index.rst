@@ -1,29 +1,28 @@
-itrails Documentation
+iTRAILS Documentation
 =====================
 
-Welcome to **itrails**, a toolkit for ancestral state reconstruction using incomplete lineage sorting (ILS) models.
+Welcome to **iTRAILS**, a Python toolkit for ancestral state reconstruction using incomplete lineage sorting (ILS).
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Documentation
+Features
+--------
 
-   cli
-   api
+- Command-line tools for tree optimization, Viterbi decoding, and posterior inference.
+- Full API documentation per module.
+- YAML-based configuration for reproducible workflows.
 
-Installation
-------------
+Get Started
+-----------
 
-Install from PyPI:
+Install it:
 
 .. code-block:: bash
 
    pip install itrails
 
-Getting Started
----------------
-
-To optimize an ancestral state tree:
+Try the optimizer:
 
 .. code-block:: bash
 
    itrails-optimize --config config.yaml
+
+Learn more in the sidebar ⟶
