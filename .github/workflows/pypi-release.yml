@@ -25,7 +25,7 @@ jobs:
         run: python -m build
 
       - name: Publish to PyPI
-        if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, 'a') && !contains(github.ref, 'b') && !contains(github.ref, 'rc')
+        if: github.ref == 'refs/tags/v0.1.0'
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
