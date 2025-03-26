@@ -25,4 +25,9 @@ Try the optimizer:
 
    itrails-optimize --config config.yaml
 
-Learn more in the sidebar ⟶
+.. toctree::
+   :maxdepth: 2
+   :hidden:
+
+   cli
+   api
