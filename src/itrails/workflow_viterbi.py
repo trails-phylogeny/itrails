@@ -501,8 +501,8 @@ def main():
                 cut_AB[shorthand[1] + 1] if key_val == 0 else cut_ABC[shorthand[1] + 1]
             )
             interval_1_text = f"{interval_1_0:.2f}-{interval_1_1:.2f}"
-            interval_2_0 = cut_AB[shorthand[2]]
-            interval_2_1 = cut_AB[shorthand[2] + 1]
+            interval_2_0 = cut_ABC[shorthand[2]]
+            interval_2_1 = cut_ABC[shorthand[2] + 1]
             interval_2_text = f"{interval_2_0:.2f}-{interval_2_1:.2f}"
 
             writer.writerow(
