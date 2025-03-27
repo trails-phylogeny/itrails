@@ -474,7 +474,7 @@ def main():
     cut_ABC = [((starting_ABC + x) / mu) for x in cut_ABC]
 
     topology_map = {
-        0: "((sp1,sp2),sp3)",
+        0: "({sp1,sp2},sp3)",
         1: "((sp1,sp2),sp3)",
         2: "((sp1,sp3),sp2)",
         3: "((sp2,sp3),sp1)",
