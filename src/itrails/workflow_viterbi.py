@@ -2,7 +2,7 @@ import argparse
 import csv
 import os
 
-from itrails.cutpoints import cutpoints_ABC
+from itrails.cutpoints import cutpoints_AB, cutpoints_ABC
 from itrails.get_trans_emiss import trans_emiss_calc
 from itrails.ncpu import N_CPU, update_n_cpu
 from itrails.optimizer import viterbi_wrapper
@@ -456,6 +456,65 @@ def main():
         "standard",
         "standard",
     )
+
+    hidden_file = os.path.join(output_dir, f"{output_prefix}_hidden_states.csv")
+    if os.path.exists(hidden_file):
+        print(f"Warning: File '{hidden_file}' already exists.")
+        hidden_file = os.path.join(output_dir, f"{output_prefix}_hidden_states_2.csv")
+        print("Using an alternative file name: {hidden_file}")
+    starting_AB = (fixed_dict["t_A"] + fixed_dict["t_B"]) / 2
+    t_AB = fixed_dict["t_2"] / fixed_dict["N_ABC"]
+    coal_AB = fixed_dict["N_ABC"] * fixed_dict["N_AB"]
+    cut_AB = cutpoints_AB(fixed_dict["n_int_AB"], t_AB, coal_AB)
+    cut_AB = [((starting_AB + x) / mu) for x in cut_AB]
+
+    starting_ABC = fixed_dict["t_C"]
+    coal_ABC = fixed_dict["N_ABC"] / fixed_dict["N_ABC"]
+    cut_ABC = cutpoints_ABC(fixed_dict["n_int_ABC"], coal_ABC)
+    cut_ABC = [((starting_ABC + x) / mu) for x in cut_ABC]
+
+    topology_map = {
+        0: "((sp1,sp2),sp3)",
+        1: "((sp1,sp2),sp3)",
+        2: "((sp1,sp3),sp2)",
+        3: "((sp2,sp3),sp1)",
+    }
+    with open(hidden_file, "w", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(
+            [
+                "state_idx",
+                "topology",
+                "interval_1st_coalescent",
+                "interval_2nd_coalescent",
+                "shorthand_name",
+            ]
+        )
+        for state_idx, shorthand in hidden_names.items():
+            key_val = shorthand[0]
+
+            topology = topology_map.get(key_val, "Unknown")
+            interval_1_0 = (
+                cut_AB[shorthand[1]] if key_val == 0 else cut_ABC[shorthand[1]]
+            )
+            interval_1_1 = (
+                cut_AB[shorthand[1] + 1] if key_val == 0 else cut_ABC[shorthand[1] + 1]
+            )
+            interval_1_text = f"{interval_1_0:.2f}-{interval_1_1:.2f}"
+            interval_2_0 = cut_AB[shorthand[2]]
+            interval_2_1 = cut_AB[shorthand[2] + 1]
+            interval_2_text = f"{interval_2_0:.2f}-{interval_2_1:.2f}"
+
+            writer.writerow(
+                [
+                    state_idx,
+                    topology,
+                    interval_1_text,
+                    interval_2_text,
+                    shorthand,
+                ]
+            )
+    print(f"Hidden states written to file {hidden_file}.")
 
     print("Running viterbi.")
 
