@@ -38,7 +38,7 @@ def main():
         "--output",
         type=str,
         required=False,
-        help="Path for output files to be stored. Format: 'directory/'.",
+        help="Path and prefix for output files to be stored. Format: 'directory/prefix'.",
     )
 
     args = parser.parse_args()
@@ -47,7 +47,7 @@ def main():
     config = load_config(config_path)
 
     input_config = config["settings"]["input_maf"]
-    output_config = config["settings"]["output_name"]
+    output_config = config["settings"]["output_preffix"]
     input_cmd = args.input
     output_cmd = args.output
 
@@ -75,11 +75,11 @@ def main():
         print(
             f"Warning: Output file specified in both config file ({output_config}) and command-line ({output_cmd}). Using command-line output."
         )
-        output_path = output_cmd
+        user_output = output_cmd
     elif output_cmd:
-        output_path = output_cmd
+        user_output = output_cmd
     elif output_config:
-        output_path = output_config
+        user_output = output_config
     elif not (output_cmd and output_config):
         raise ValueError(
             "Error: Output file not specified in config file or command-line."
@@ -88,10 +88,10 @@ def main():
         raise ValueError(
             "Error: Output file not specified in config file or command-line."
         )
+    output_dir, output_prefix = os.path.split(user_output)
+    os.makedirs(output_dir, exist_ok=True)
 
-    os.makedirs(output_path, exist_ok=True)
-
-    print(f"Results will be saved to: {output_path}")
+    print(f"Results will be saved to: {output_dir}.")
 
     # Get user-requested CPU count from the configuration, if present.
     requested_cores = config["settings"].get("n_cpu")
@@ -105,7 +105,7 @@ def main():
     fixed_params = config["fixed_parameters"]
     optimized_params = config["optimized_parameters"]
     settings = config["settings"]
-    settings["output_name"] = output_path
+    settings["output_prefix"] = user_output
     settings["input_maf"] = maf_path
     settings["n_cpu"] = N_CPU
     species_list = settings["species_list"]
@@ -394,7 +394,9 @@ def main():
 
     filtered_fixed_dict["mu"] = mu
 
-    starting_params_yaml = os.path.join(output_path, "starting_params.yaml")
+    starting_params_yaml = os.path.join(
+        output_dir, f"{output_prefix}_starting_params.yaml"
+    )
 
     def adjust_value(value, param, mu):
         """Adjusts the parameter value based on the parameter name."""
@@ -431,7 +433,7 @@ def main():
     with open(starting_params_yaml, "w") as f:
         yaml.dump(starting_params, f, default_flow_style=False)
 
-    best_model_yaml = os.path.join(output_path, "best_model.yaml")
+    best_model_yaml = os.path.join(output_dir, f"{output_prefix}_best_model.yaml")
     starting_best_model = {
         "fixed_parameters": filtered_fixed_dict,
         "optimized_parameters": {},
@@ -452,14 +454,16 @@ def main():
         bounds=bounds_list,
         fixed_params=fixed_dict,
         V_lst=maf_alignment,
-        res_name=output_path,
+        res_name=user_output,
         case=case,
         method=method,
         header=True,
     )
 
     print(
-        f"Optimization complete. Results saved to {os.path.join(output_path, "optimization_history.csv")}.\n Best model saved to {best_model_yaml}."
+        f"Optimization complete. Results saved to {os.path.join(
+        output_dir, f"{output_prefix}_optimization_history.csv"
+    )}.\n Best model saved to {best_model_yaml}."
     )
 
 

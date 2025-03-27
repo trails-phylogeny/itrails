@@ -13,7 +13,7 @@ optimized_parameters: # [starting, min, max]
 
 settings:
   input_maf: # Path to the MAF alignment file (overwritten by console argument)
-  output_name: # Path to the output directory (overwritten by console argument)
+  output_prefix: # Path/preffix to the output directory (overwritten by console argument)
   n_cpu: 64
   method: "Nelder-Mead"
   species_list: ["hg38", "panTro5", "gorGor5", "ponAbe2"]
