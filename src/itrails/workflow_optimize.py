@@ -47,7 +47,7 @@ def main():
     config = load_config(config_path)
 
     input_config = config["settings"]["input_maf"]
-    output_config = config["settings"]["output_preffix"]
+    output_config = config["settings"]["output_prefix"]
     input_cmd = args.input
     output_cmd = args.output
 
