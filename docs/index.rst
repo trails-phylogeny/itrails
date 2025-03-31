@@ -16,17 +16,17 @@ Installation
 
 iTRAILS is available both on PyPi and via conda. Choose the installation method that best fits your environment.
 
-### Using PyPi
+- Using PyPi
 
 .. code-block:: bash
 
     pip install itrails
 
-### Using conda
+- Using conda
 
 .. code-block:: bash
 
-    conda install -c bioconda itrails
+    conda install conda-forge::itrails
 
 Basic Usage
 -----------
@@ -98,7 +98,6 @@ This landing page covers installation and basic usage. For further details on ea
 .. toctree::
    :maxdepth: 2
    :hidden:
-   index
    cli_optm
    cli_vit
    cli_post
