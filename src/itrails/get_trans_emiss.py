@@ -107,33 +107,7 @@ def trans_emiss_calc(
         cut_AB,
         cut_ABC,
     )
-    # Convert dictionary to DataFrame
 
-    # Get all unique states
-    unique_states = sorted(set(state for pair in tr_dict.keys() for state in pair))
-
-    # Create mapping from states to indices
-    state_to_index = {state: i for i, state in enumerate(unique_states)}
-    # index_to_state = {i: state for state, i in state_to_index.items()}  # Reverse mapping
-    hidden_names = {
-        i: state for i, state in enumerate(unique_states)
-    }  # Equivalent to index_to_state
-    # Initialize an empty transition matrix
-    n_states = len(unique_states)
-    transition_matrix = np.zeros((n_states, n_states))
-
-    # Fill the matrix with probabilities
-    for (from_state, to_state), prob in tr_dict.items():
-        from_idx = state_to_index[from_state]
-        to_idx = state_to_index[to_state]
-        transition_matrix[from_idx, to_idx] = prob
-
-    pi = transition_matrix.sum(axis=1)
-
-    # Avoid division by zero
-    a = np.divide(transition_matrix, pi, where=pi != 0)
-
-    # Get emissions using the modified function (which now returns lists)
     hidden_states, emission_dicts = get_emission_prob_mat(
         t_A,
         t_B,
@@ -162,14 +136,29 @@ def trans_emiss_calc(
         cut_AB,
         cut_ABC,
     )
-    # Sort emissions by hidden state (assuming hidden_states can be compared)
+
     sorted_data = sorted(zip(hidden_states, emission_dicts), key=lambda x: x[0])
     sorted_states, sorted_emissions = zip(*sorted_data)
     hidden_names = {i: state for i, state in enumerate(sorted_states)}
-    # Assume all emission dictionaries have the same keys.
+
     observed_keys = sorted(list(sorted_emissions[0].keys()))
     observed_names = {i: key for i, key in enumerate(observed_keys)}
-    # Build emission matrix 'b': each row corresponds to a hidden state and columns follow the order in observed_keys.
+
     b = np.array([[em[key] for key in observed_keys] for em in sorted_emissions])
+
+    state_to_index = {state: i for i, state in hidden_names.items()}
+
+    n_states = len(hidden_names)
+
+    transition_matrix = np.zeros((n_states, n_states))
+
+    for (from_state, to_state), prob in tr_dict.items():
+        i = state_to_index[from_state]
+        j = state_to_index[to_state]
+        transition_matrix[i, j] = prob
+
+    pi = transition_matrix.sum(axis=1, keepdims=True)
+
+    a = np.divide(transition_matrix, pi, where=pi != 0)
 
     return a, b, pi, hidden_names, observed_names
