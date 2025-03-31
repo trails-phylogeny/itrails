@@ -49,32 +49,53 @@ Example Output (Simplified)
 -----------------------------
 Below is a simplified illustration of what you might see in the output files.
 
-**Viterbi Results (viterbi_results.csv):**
+**Viterbi Results (viterbi_results.csv)**
 
-.. code-block:: none
+.. list-table:: Viterbi Results (viterbi_results.csv)
+   :widths: 25 25 25 25
+   :header-rows: 1
 
-   +-------------+-------------------+--------------+-------------------+
-   | Block Index | Starting Position | End Position | Most Likely State |
-   +=============+===================+==============+===================+
-   | 0           | 1                 | 1500         | 3                 |
-   +-------------+-------------------+--------------+-------------------+
-   | 1           | 1501              | 3000         | 7                 |
-   +-------------+-------------------+--------------+-------------------+
-   | 2           | 3001              | 4500         | 3                 |
-   +-------------+-------------------+--------------+-------------------+
-
-**Hidden States (hidden_states.csv):**
-
-.. code-block:: none
-
-   +-------------+------------+----------------------------+-----------------------------+----------------+
-   | State Index | Topology   | Interval First Coalescence | Interval Second Coalescence | Shorthand Name |
-   +=============+============+============================+=============================+================+
-   | 0           | (A(B,C))   | 1000                       | 2000                        | 0-1-1          |
-   +-------------+------------+----------------------------+-----------------------------+----------------+
-   | 1           | ((A,B),C)  | 1500                       | 2500                        | 1-1-2          |
-   +-------------+------------+----------------------------+-----------------------------+----------------+
-   | ...         | ...        | ...                        | ...                         | ...            |
-   +-------------+------------+----------------------------+-----------------------------+----------------+
+   * - Block Index
+     - Starting Position
+     - End Position
+     - Most Likely State
+   * - 0
+     - 1
+     - 1500
+     - 3
+   * - 1
+     - 1501
+     - 3000
+     - 7
+   * - 2
+     - 3001
+     - 4500
+     - 3
 
 
+**Hidden States (hidden_states.csv)**
+
+.. list-table:: Hidden States (hidden_states.csv)
+   :widths: 20 20 30 30 20
+   :header-rows: 1
+
+   * - State Index
+     - Topology
+     - Interval First Coalescence
+     - Interval Second Coalescence
+     - Shorthand Name
+   * - 0
+     - (A(B,C))
+     - 1000
+     - 2000
+     - 0-1-1
+   * - 1
+     - ((A,B),C)
+     - 1500
+     - 2500
+     - 1-1-2
+   * - ...
+     - ...
+     - ...
+     - ...
+     - ...
