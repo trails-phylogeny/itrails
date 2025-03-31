@@ -97,7 +97,10 @@ This landing page covers installation and basic usage. For further details on ea
 
 .. toctree::
    :maxdepth: 2
+   :hidden:
 
+   index
+   parameterization
    cli_optm
    cli_vit
    cli_post

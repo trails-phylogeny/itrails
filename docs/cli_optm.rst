@@ -20,28 +20,31 @@ The optimization parameters are defined in a YAML configuration file, which is o
 1. **Fixed Parameters**  
    These parameters remain constant during the optimization. For example, the mutation rate can be fixed:
    
-   ```yaml
+.. code-block:: yaml
+
    fixed_parameters:
      mu: 2e-8
-   ```
+
 2. **Optimized Parameters**
    Parameters to be optimized are specified as a list in the format ```[starting, minimum, maximum]```. For example:
 
-   ```yaml
+.. code-block:: yaml
+   
    optimized_parameters:  # [starting, min, max]
-   N_AB: [50000, 5000, 500000]
-   N_ABC: [50000, 5000, 500000]
-   t_1: [240000, 24000, 2400000]
-   t_2: [40000, 4000, 400000]
-   t_3: [800000, 80000, 8000000]
-   t_upper: [745069.3855, 74506.9385, 7450693.8556]
-   r: [1e-8, 1e-9, 1e-7]
-   ```
+      N_AB: [50000, 5000, 500000]
+      N_ABC: [50000, 5000, 500000]
+      t_1: [240000, 24000, 2400000]
+      t_2: [40000, 4000, 400000]
+      t_3: [800000, 80000, 8000000]
+      t_upper: [745069.3855, 74506.9385, 7450693.8556]
+      r: [1e-8, 1e-9, 1e-7]
+
 
 3. **Settings**
    This section allows you to specify file paths, processing options, and other runtime settings such as the number of cores and the optimization method:
 
-   ```yaml
+.. code-block:: yaml
+
    settings:
      input_maf: path/to/alignment.maf
      output_prefix: path/to/output_dir/prefix
@@ -50,7 +53,7 @@ The optimization parameters are defined in a YAML configuration file, which is o
      species_list: ["hg38", "panTro5", "gorGor5", "ponAbe2"]
      n_int_AB: 3
      n_int_ABC: 3
-   ```
+
 
 Execution and Outputs
 ------------------
