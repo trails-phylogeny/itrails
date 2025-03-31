@@ -157,7 +157,7 @@ def trans_emiss_calc(
         j = state_to_index[to_state]
         transition_matrix[i, j] = prob
 
-    pi = transition_matrix.sum(axis=1, keepdims=True)
+    pi = transition_matrix.sum(axis=1)
 
     a = np.divide(transition_matrix, pi, where=pi != 0)
 
