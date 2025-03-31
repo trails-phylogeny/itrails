@@ -99,7 +99,6 @@ This landing page covers installation and basic usage. For further details on ea
    :maxdepth: 2
    :hidden:
 
-   index
    parameterization
    cli_optm
    cli_vit

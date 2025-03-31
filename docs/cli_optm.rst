@@ -1,4 +1,4 @@
-CLI for Optimization in iTRAILS
+Optimization of parameters
 ================================
 
 Overview

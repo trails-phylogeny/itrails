@@ -33,7 +33,7 @@ Dependencies and Restrictions
 - **T_A**, **T_B**, **T_C**, and **T1** should be defined (fixed or optimized) in the following combinations. The non-defined parameters will take values as indicated in the table below.
 
 Relationship Between T_A, T_B, T_C, and T1
-============================================
+-------------------------------------------
 
 +----------------------+----------------------+----------------------+--------------------------+
 | Specified Parameters | Used **T_A**         | Used **T_B**         | Used **T_C**             |
