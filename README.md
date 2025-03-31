@@ -1,69 +1,39 @@
 # iTRAILS
 
-## Software
+iTRAILS is a command-line tool designed to infer population parameters and reconstruct evolutionary histories from genomic data using a coalescent hidden Markov model framework. It offers functionalities such as parameter optimization, Viterbi decoding, and posterior decoding, all wrapped in a user-friendly interface.
 
-iTRAILS is a framework to jointly model incomplete lineage sorting (ILS) and gene flow (GF). iTRAILS uses the multispecies coalescent to approximate the ancestral recombination history of three populations and an outgroup. In brief, iTRAILS infers the ancestral tree from a multiple genome alignment, unbiasedly estimating ancestral effective population sizes, speciation times, and introgression time and proportions. iTRAILS also performs posterior decoding.
+## Features
 
-iTRAILS can be installed as both a PyPi and a conda package, and it's codebase is available at:
+- **Parameter Optimization:** Optimize critical population parameters from genomic alignment data.
+- **Gene Tree Decoding:** Infer gene tree topologies across the genome using Viterbi and posterior decoding.
+- **Command Line Interface (CLI):** Easily integrate iTRAILS into your bioinformatics workflows.
+- **Config File Support:** Customize parameters via YAML configuration files without altering the source code.
 
-[https://github.com/trails-phylogeny/itrails](https://github.com/trails-phylogeny/itrails)
+## Installation
 
-Once the package is installed, iTRAILS is initiaited and controlled through 2 main console commands. 
+Install iTRAILS using PyPi:
 
-### Optimization of Parameters
-
-iTRAILS estimates key demographic parameters—such as speciation times, ancestral effective population sizes (Ne), and recombination rate (ρ)—by maximizing the log-likelihood computed from the coalescent HMM. iTRAILS takes into account the following parameters:
-  - Population size parameters:
-    - N_AB: Effective size of the ancestral population between the two most closely related species.
-    - N_ABC: Effective size of the ancestral population between the three species.
-  - Time parameters (generations):
-    - T_1: Assuming ultrametric model, time from sample to coalescence of species A and B.
-    - T_2: Time between coalescence of species A and B and coalescence of AB ancestral with species C.
-    - T_3: Time between coalescence of species ABC and coalescence of ABC ancestral with outgroup species.
-    - T_A: Time from sample of species A until coalescence with species B.
-    - T_B: Time from sample of species B until coalescence with species A.
-    - T_C: Time from sample of species C until coalescence with AB ancestral.
-    - T_Upper: Time from start of last discretized time interval in ABC ancestral until coalescence with outgroup. 
-    - T_Out: Time from sample of outgorup until coalescence with ABC ancestral.
-  - Other parameters:
-    - Recombination rate (ρ): NUmber of recombinations per site per generation.
-    - Mutation rate (μ): Number of mutations per site per generation.
-
-Not all of the previously described parameters are independent from each other. Therefore, definition of parameters should comply with the following restrictions:
-  - T_2, N_AB, N_ABC, ρ must always be defined as a fixed parameter os as a parameter to optimize.
-  - μ must always be defined as a fixed parameter.
-  - T_Upper and T_3: At least one of them should be defined (fixed or optimized). If only one of them is defined, the other one will be automatically calculated.
-  - T_out: Can be defined or omitted, if defined it must be fixed, if omitted it will be automatically calculated.
-  - T_A, T_B, T_C and T_1 should be defined (fixed or optimized) in the following combinations, the non defined parameters will take values as defined in the following table:
-
-| Specified parameters | Used T_A                    | Used T_B                    | Used T_C                    |
-|:---------------------|:---------------------------:|:---------------------------:|:---------------------------:|     
-| T_A / T_B / T_C      | T_A                         | T_B                         | T_C                         |
-| T_1 / T_A            | T_A                         | T_1                         | T_1 + T_2                   |
-| T_1 / T_B            | T_1                         | T_B                         | T_1 + T_2                   |
-| T_1 / T_C            | T_1                         | T_1                         | T_C                         |
-| T_A / T_B            | T_A                         | T_B                         | $\frac{T_A + T_B}{2} + T_2$ |
-| T_A / T_C            | T_A                         | $\frac{T_A + T_C - T_2}{2}$ | T_C                         |
-| T_B / T_C            | $\frac{T_B + T_C - T_2}{2}$ | T_B                         | T_C                         |
-| T_1                  | T_1                         | T_1                         | T_1 + T_2                   |
-
-
-In order to run an optimization, iTRAILS needs two input files.
-  - A four-way genome alignment (MAF file) between three species and an outgroup.
-
+```bash
+pip install itrails
 ```
-$ cat alignment.maf
+Or with conda:
+```bash
+conda install conda-forge::itrails
+```
+## Quick Start
 
-##maf version=1 scoring=none
-# generated by Biopython
+1. Create a YAML configuration file defining fixed and optimized parameters.
+2. Run the parameter optimization with:
 
-a score=3.25073e+06
-s gorGor5.CYUI01015145v1                           8162515  3382 +         8455952 tcaaaaaactatttcttgagcattcattaagtgcaaa
-s hg38.chr1                                       24998515  3414 +       248956422 TCAAAAAACTATTTCTTGAGCATTCATTAAGTGCAAA
-s panTro5.chr1                                    24190887  3415 +       228573443 tcaaaaaactatctcttgagcattcattaagtgcaaa
-s ponAbe2.chr1                                    24531025  3415 -       229942017 tcaaaaaactctttcttgagcattcattaagtgcaaa
-
-a score=4.56614e+06
+```bash
+itrails-optimize config.yaml --input path/to/alignment.maf --output path/to/output/output_prefix
 ```
 
-  - A configuration file (.yaml) that specifies fixed parameters, parameters to optimize, as well as the alignment file path (optional) and output path (optional). An example configuration file is found in the package and can be seen in console with the following function:
+3. Run the parameter optimization with: Use the generated Best Model configuration file to perform gene tree decoding with:
+  - Viterbi Decoding: ```itrails-viterbi```
+  - Posterior Decoding: ```itrails-posterior```
+
+## Documentation
+
+For more detailed instructions, usage examples, and API references, please visit our full documentation at:
+[Read The Docs - iTRAILS](https://itrails.readthedocs.io/en/stable/)
