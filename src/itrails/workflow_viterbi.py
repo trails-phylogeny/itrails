@@ -90,7 +90,7 @@ def main():
     output_dir, output_prefix = os.path.split(user_output)
     os.makedirs(output_dir, exist_ok=True)
 
-    print(f"Results will be saved to: {output_dir} as '{output_prefix}_viterbi.csv'.")
+    print(f"Results will be saved to: {output_dir} as '{output_prefix}.viterbi.csv'.")
 
     # Get user-requested CPU count from the configuration, if present.
     requested_cores = config["settings"].get("n_cpu")
@@ -457,10 +457,10 @@ def main():
         "standard",
     )
 
-    hidden_file = os.path.join(output_dir, f"{output_prefix}_hidden_states.csv")
+    hidden_file = os.path.join(output_dir, f"{output_prefix}.hidden_states.csv")
     if os.path.exists(hidden_file):
         print(f"Warning: File '{hidden_file}' already exists.")
-        hidden_file = os.path.join(output_dir, f"{output_prefix}_hidden_states_2.csv")
+        hidden_file = os.path.join(output_dir, f"{output_prefix}.hidden_states_2.csv")
         print("Using an alternative file name: {hidden_file}")
     starting_AB = (fixed_dict["t_A"] + fixed_dict["t_B"]) / 2
     t_AB = fixed_dict["t_2"] / fixed_dict["N_ABC"]
@@ -520,7 +520,7 @@ def main():
 
     viterbi_result = viterbi_wrapper(a=a, b=b, pi=pi, V_lst=maf_alignment)
     print("Writing results to file.")
-    output_file = os.path.join(output_dir, f"{output_prefix}_viterbi.csv")
+    output_file = os.path.join(output_dir, f"{output_prefix}.viterbi.csv")
 
     with open(output_file, "w", newline="") as csvfile:
         writer = csv.writer(csvfile)

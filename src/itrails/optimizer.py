@@ -411,7 +411,7 @@ def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, in
     :return: Negative log-likelihood value (to be minimized by the optimizer).
     :rtype: float."""
     output_dir, output_prefix = os.path.split(res_name)
-    best_model_yaml = os.path.join(output_dir, f"{output_prefix}_best_model.yaml")
+    best_model_yaml = os.path.join(output_dir, f"{output_prefix}.best_model.yaml")
     d_copy = d.copy()
 
     for i, param in enumerate(optimized_params):
@@ -568,7 +568,7 @@ def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, in
 
     write_list(
         [info["Nfeval"]] + arg_lst.tolist() + [loglik, time.time() - info["time"]],
-        os.path.join(output_dir, f"{output_prefix}_optimization_history.csv"),
+        os.path.join(output_dir, f"{output_prefix}.optimization_history.csv"),
     )
 
     update_best_model(
@@ -610,7 +610,7 @@ def optimizer(
     """
     output_dir, output_prefix = os.path.split(res_name)
     optimization_history = os.path.join(
-        output_dir, f"{output_prefix}_optimization_history.csv"
+        output_dir, f"{output_prefix}.optimization_history.csv"
     )
     if header:
         write_list(

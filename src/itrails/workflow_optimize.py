@@ -395,7 +395,7 @@ def main():
     filtered_fixed_dict["mu"] = mu
 
     starting_params_yaml = os.path.join(
-        output_dir, f"{output_prefix}_starting_params.yaml"
+        output_dir, f"{output_prefix}.starting_params.yaml"
     )
 
     def adjust_value(value, param, mu):
@@ -433,7 +433,7 @@ def main():
     with open(starting_params_yaml, "w") as f:
         yaml.dump(starting_params, f, default_flow_style=False)
 
-    best_model_yaml = os.path.join(output_dir, f"{output_prefix}_best_model.yaml")
+    best_model_yaml = os.path.join(output_dir, f"{output_prefix}.best_model.yaml")
     starting_best_model = {
         "fixed_parameters": filtered_fixed_dict,
         "optimized_parameters": {},
@@ -462,7 +462,7 @@ def main():
 
     print(
         f"Optimization complete. Results saved to {os.path.join(
-        output_dir, f"{output_prefix}_optimization_history.csv"
+        output_dir, f"{output_prefix}.optimization_history.csv"
     )}.\n Best model saved to {best_model_yaml}."
     )
 

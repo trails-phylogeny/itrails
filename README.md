@@ -36,4 +36,4 @@ itrails-optimize config.yaml --input path/to/alignment.maf --output path/to/outp
 ## Documentation
 
 For more detailed instructions, usage examples, and API references, please visit our full documentation at:
-[Read The Docs - iTRAILS](https://itrails.readthedocs.io/en/stable/)
+[Read The Docs - iTRAILS](https://itrails.readthedocs.io/en/)
