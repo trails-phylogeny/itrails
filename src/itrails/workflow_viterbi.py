@@ -23,7 +23,7 @@ def main():
     parser.add_argument(
         "config_file",
         type=str,
-        help="Path to the YAML config file or 'example' to use built-in example.",
+        help="Path to the YAML config file.",
     )
 
     parser.add_argument(

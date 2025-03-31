@@ -11,6 +11,7 @@ N_CPU = ALLOCATED_CPUS
 def update_n_cpu(user_requested):
     """
     Update the global N_CPU based on the user-requested number of CPUs. This function sets N_CPU to the minimum of the user request and ALLOCATED_CPUS. It also updates environment variables used by numerical libraries.
+
     :param user_requested: Number of CPU cores requested by the user.
     :type user_requested: int.
     """

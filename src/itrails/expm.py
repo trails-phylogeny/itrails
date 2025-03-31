@@ -12,6 +12,7 @@ def expm(A):
     Calculates matrix exponential of a square matrix A.
     Adapted from https://github.com/michael-hartmann/expm/blob/master/python/expm.py
     Algorithm 10.20 from unctions of Matrices: Theory and Computation, Nicholas J. Higham, 2008
+
     :param A: square matrix
     :type A: np.array
     :return: matrix exponential of A
