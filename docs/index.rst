@@ -48,51 +48,9 @@ iTRAILS consists of several command-line functions. Here’s a brief overview of
   Computes the posterior probability distribution of hidden states at every alignment position.
 
 .. note::
-   Detailed documentation for each CLI function is available on separate pages.
+   This landing page covers installation and basic usage. For further details on each command-line function, please refer to their individual documentation pages. Happy analyzing!
 
-Getting Started with Parameter Optimization
----------------------------------------------
-
-Begin by creating a YAML configuration file that specifies fixed and optimized parameters. For example:
-
-.. code-block:: yaml
-
-    fixed_parameters:
-      mu: 2e-8
-
-    optimized_parameters:
-      N_AB: [50000, 5000, 500000]
-      N_ABC: [50000, 5000, 500000]
-      t_1: [240000, 24000, 2400000]
-      t_2: [40000, 4000, 400000]
-      t_3: [800000, 80000, 8000000]
-      t_upper: [745069.3855, 74506.9385, 7450693.8556]
-      r: [1e-8, 1e-9, 1e-7]
-
-    settings:
-      input_maf: path/to/alignment.maf
-      output_prefix: path/to/output_dir/prefix
-      n_cpu: 64
-      method: "Nelder-Mead"
-      species_list: ["hg38", "panTro5", "gorGor5", "ponAbe2"]
-      n_int_AB: 3
-      n_int_ABC: 3
-
-Run the optimization with:
-
-.. code-block:: bash
-
-    itrails-optimize config.yaml --input path/to/alignment.maf --output path/to/output_dir/prefix
-
-Upon completion, the tool produces a **Best Model** file containing the optimized parameters. This file serves as the configuration for subsequent decoding analyses.
-
-Additional Resources
---------------------
-
-- **Full Documentation:** For more comprehensive instructions, usage examples, and API reference, please visit the `iTRAILS Read the Docs <https://itrails.readthedocs.io/en/stable/>`_.
 - **Source Code:** Access the codebase or contribute to the project on `GitHub <https://github.com/trails-phylogeny/itrails>`_.
-
-This landing page covers installation and basic usage. For further details on each command-line function, please refer to their individual documentation pages. Happy analyzing!
 
 
 .. toctree::
