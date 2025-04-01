@@ -137,18 +137,16 @@ def trans_emiss_calc(
         cut_ABC,
     )
 
-    sorted_data = sorted(zip(hidden_states, emission_dicts), key=lambda x: x[0])
-    sorted_states, sorted_emissions = zip(*sorted_data)
-    hidden_names = {i: state for i, state in enumerate(sorted_states)}
-
-    observed_keys = sorted(list(sorted_emissions[0].keys()))
+    observed_keys = list(emission_dicts[0].keys())
+    b = np.array([[em[key] for key in observed_keys] for em in emission_dicts])
+    sorted_indices = sorted(range(len(hidden_states)), key=lambda i: hidden_states[i])
+    hidden_list_sorted = [hidden_states[i] for i in sorted_indices]
+    emission_array_sorted = b[sorted_indices]
+    sorted_hidden_dict = dict(enumerate(hidden_list_sorted))
     observed_names = {i: key for i, key in enumerate(observed_keys)}
 
-    b = np.array([[em[key] for key in observed_keys] for em in sorted_emissions])
-
-    state_to_index = {state: i for i, state in hidden_names.items()}
-
-    n_states = len(hidden_names)
+    state_to_index = {v: k for k, v in sorted_hidden_dict.items()}
+    n_states = len(hidden_states)
 
     transition_matrix = np.zeros((n_states, n_states))
 
@@ -159,6 +157,6 @@ def trans_emiss_calc(
 
     pi = transition_matrix.sum(axis=1)
 
-    a = np.divide(transition_matrix, pi, where=pi != 0)
+    a = transition_matrix / pi[:, None]
 
-    return a, b, pi, hidden_names, observed_names
+    return a, emission_array_sorted, pi, sorted_hidden_dict, observed_names
