@@ -291,7 +291,7 @@ def main():
             else:
                 fixed_dict[param] = float(values) * float(mu)
 
-    for i, param in enumerate(optimized_params):
+    for i, param in enumerate(optim_list):
         fixed_dict[param] = optim_list[i]
 
     cut_ABC = cutpoints_ABC(fixed_dict["n_int_ABC"], 1)
