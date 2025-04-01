@@ -58,7 +58,7 @@ def translate_to_omega(key):
         if left[2] != -1:
             l_omega = 7
         elif left[2] == -1:
-            l_omega = 5
+            l_omega = 6
     if right[0] == -1:
         if right[1] == right[2] and right[1] != -1:
             r_omega = 7
