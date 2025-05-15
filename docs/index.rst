@@ -6,7 +6,7 @@ Welcome to the iTRAILS documentation landing page. iTRAILS is a command-line too
 Overview
 --------
 
-iTRAILS builds upon the original TRAILS framework by offering a more programmatic and user-friendly implementation for:
+iTRAILS builds upon the original TRAILS framework [1]_ by offering a more programmatic and user-friendly implementation for:
 
 - **Parameter Optimization:** Estimate key population parameters by maximizing the likelihood of genomic alignment data.
 - **Gene Tree Decoding:** Use both Viterbi and posterior decoding to determine the most likely sequence of hidden states (gene tree topologies) across genomic segments.
@@ -51,6 +51,12 @@ iTRAILS consists of several command-line functions. Here’s a brief overview of
    This landing page covers installation and basic usage. For further details on each command-line function, please refer to their individual documentation pages. Happy analyzing!
 
 - **Source Code:** Access the codebase or contribute to the project on `GitHub <https://github.com/trails-phylogeny/itrails>`_.
+
+
+References
+-----------
+
+.. [1] Rivas-González I, Schierup MH, Wakeley J, Hobolth A. TRAILS: Tree reconstruction of ancestry using incomplete lineage sorting. *PLoS Genet.* 2024;20(2):e1010836. Published 2024 Feb 8. doi:10.1371/journal.pgen.1010836.
 
 
 .. toctree::
