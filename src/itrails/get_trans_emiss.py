@@ -16,8 +16,8 @@ def trans_emiss_calc(
     r,
     n_int_AB,
     n_int_ABC,
-    cut_AB="standard",
-    cut_ABC="standard",
+    cut_AB,
+    cut_ABC,
 ):
     """
     Calculate the emission and transition probabilities given a set of parameters.
@@ -44,10 +44,10 @@ def trans_emiss_calc(
     :type n_int_AB: int
     :param n_int_ABC: Number of discretized time intervals in deep coalescent
     :type n_int_ABC: int
-    :param cut_AB: Option for handling cutoffs between speciation events for species A and B. Default is "standard".
-    :type cut_AB: str
-    :param cut_ABC: Option for handling cutoffs in deep coalescence for species A, B, and C. Default is "standard".
-    :type cut_ABC: str
+    :param cut_AB: Cutpoints in the A-B process.
+    :type cut_AB: Array-like
+    :param cut_ABC: Cutpoints in the A-B-C process.
+    :type cut_ABC: Array-like
 
     :return: A tuple containing:
              - **a**: Transition probability matrix.

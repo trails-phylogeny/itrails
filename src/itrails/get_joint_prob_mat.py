@@ -4,7 +4,7 @@ import numpy as np
 
 # Functions
 from itrails.combine_states import combine_states_wrapper
-from itrails.cutpoints import cutpoints_AB, cutpoints_ABC, get_times
+from itrails.cutpoints import get_times
 from itrails.expm import expm
 from itrails.run_markov_chain_AB import run_markov_chain_AB
 from itrails.run_markov_chain_ABC import run_markov_chain_ABC
@@ -28,8 +28,8 @@ def get_joint_prob_mat(
     coal_ABC,
     n_int_AB,
     n_int_ABC,
-    cut_AB="standard",
-    cut_ABC="standard",
+    cut_AB,
+    cut_ABC,
 ):
     """
     Compute the joint probability matrix via sequential Markov chain steps and state combination.
@@ -72,10 +72,10 @@ def get_joint_prob_mat(
     :type n_int_AB: int
     :param n_int_ABC: Number of discretized time intervals for the A-B-C process.
     :type n_int_ABC: int
-    :param cut_AB: Option for cutpoints in the A-B process; if a string, standard cutpoints are computed.
-    :type cut_AB: str or array-like
-    :param cut_ABC: Option for cutpoints in the A-B-C process; if a string, standard cutpoints are computed.
-    :type cut_ABC: str or array-like
+    :param cut_AB: Cutpoints in the A-B process.
+    :type cut_AB: Array-like
+    :param cut_ABC: Cutpoints in the A-B-C process.
+    :type cut_ABC: Array-like
 
     :return: A numba typed dictionary mapping state tuples to numpy arrays containing the joint probability
              matrices computed via the Markov chain process.
@@ -135,8 +135,6 @@ def get_joint_prob_mat(
         final_B,
     )
 
-    if isinstance(cut_AB, str):
-        cut_AB = cutpoints_AB(n_int_AB, t_AB, coal_AB)
     times_AB = get_times(cut_AB, list(range(len(cut_AB))))
     inverted_omega_nonrev_counts = nb.typed.Dict.empty(
         key_type=nb.types.int64,
@@ -162,8 +160,6 @@ def get_joint_prob_mat(
         final_C,
     )
 
-    if isinstance(cut_ABC, str):
-        cut_ABC = cutpoints_ABC(n_int_ABC, coal_ABC)
     times_ABC = get_times(cut_ABC, list(range(len(cut_ABC))))
     inverted_omega_nonrev_counts = nb.typed.Dict.empty(
         key_type=nb.types.int64, value_type=nb.types.ListType(nb.types.int64)

@@ -267,6 +267,10 @@ def main():
                         f"the minimum ({lower_t_upper}) and maximum ({upper_t_upper})."
                     )
                 t_upper = [t_upper_starting, lower_t_upper, upper_t_upper]
+                if t_upper[0] < 0 or t_upper[1] < 0 or t_upper[2] < 0:
+                    raise ValueError(
+                        "Calculated 't_upper' values cannot be negative. Please check your input parameters."
+                    )
                 optim_variables.append("t_upper")
                 optim_list.append(t_upper_starting)
                 bounds_list.append((lower_t_upper, upper_t_upper))
@@ -288,6 +292,10 @@ def main():
                         f"the minimum ({lower_t_upper}) and maximum ({upper_t_upper})."
                     )
                 t_upper = [t_upper_starting, lower_t_upper, upper_t_upper]
+                if t_upper[0] < 0 or t_upper[1] < 0 or t_upper[2] < 0:
+                    raise ValueError(
+                        "Calculated 't_upper' values cannot be negative. Please check your input parameters."
+                    )
                 optim_variables.append("t_upper")
                 optim_list.append(t_upper_starting)
                 bounds_list.append((lower_t_upper, upper_t_upper))
@@ -317,6 +325,10 @@ def main():
                         f"the minimum ({lower_t_upper}) and maximum ({upper_t_upper})."
                     )
                 t_upper = [t_upper_starting, lower_t_upper, upper_t_upper]
+                if t_upper[0] < 0 or t_upper[1] < 0 or t_upper[2] < 0:
+                    raise ValueError(
+                        "Calculated 't_upper' values cannot be negative. Please check your input parameters."
+                    )
                 optim_variables.append("t_upper")
                 optim_list.append(t_upper)
                 bounds_list.append((lower_t_upper, upper_t_upper))
@@ -334,8 +346,18 @@ def main():
         bounds_list.append(
             (optimized_params["t_upper"][1], optimized_params["t_upper"][2])
         )
+
+        if optim_list[-1] < 0 or bounds_list[-1][0] < 0 or bounds_list[-1][1] < 0:
+            raise ValueError(
+                "Parameter 't_upper' cannot be negative. Please check your input parameters."
+            )
+
     elif "t_upper" in fixed_params:
         fixed_dict["t_upper"] = fixed_params["t_upper"]
+        if fixed_dict["t_upper"] < 0:
+            raise ValueError(
+                "Parameter 't_upper' cannot be negative. Please check your input parameters."
+            )
 
     # Sets t_out
     if "t_out" in fixed_params:
@@ -461,9 +483,9 @@ def main():
     )
 
     print(
-        f"Optimization complete. Results saved to {os.path.join(
-        output_dir, f"{output_prefix}.optimization_history.csv"
-    )}.\n Best model saved to {best_model_yaml}."
+        f"Optimization complete. Results saved to {
+            os.path.join(output_dir, f'{output_prefix}.optimization_history.csv')
+        }.\n Best model saved to {best_model_yaml}."
     )
 
 
