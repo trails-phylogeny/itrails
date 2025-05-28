@@ -88,10 +88,12 @@ def trans_emiss_calc(
     mu_AB = N_ref * (4 / 3)
     mu_ABC = N_ref * (4 / 3)
 
-    if cut_AB == "standard":
-        cut_AB = cutpoints_AB(n_int_AB, t_AB, coal_AB)
-    if cut_ABC == "standard":
-        cut_ABC = cutpoints_ABC(n_int_ABC, coal_ABC)
+    if isinstance(cut_AB, str):
+        if cut_AB == "standard":
+            cut_AB = cutpoints_AB(n_int_AB, t_AB, coal_AB)
+    if isinstance(cut_ABC, str):
+        if cut_ABC == "standard":
+            cut_ABC = cutpoints_ABC(n_int_ABC, coal_ABC)
 
     tr_dict = get_joint_prob_mat(
         t_A,
