@@ -106,17 +106,19 @@ def main():
 
     if not n_int_AB and not cut_AB:
         raise ValueError(
-            "Error: n_int_AB or cutpoints_AB must be specified in the config file."
+            "Error: n_int_AB must be specified in the config file for automatic cutpoints, n_int_AB and cutpoints_AB must be specified in the config file for manual cutpoints."
         )
     if not n_int_ABC and not cut_ABC:
         raise ValueError(
-            "Error: n_int_ABC or cutpoints_ABC must be specified in the config file."
+            "Error: n_int_ABC must be specified in the config file for automatic cutpoints, n_int_ABC and cutpoints_ABC must be specified in the config file for manual cutpoints."
         )
-    if cut_AB and n_int_AB:
-        print("Warning: cutpoints_AB and n_int_AB both specified. Using cutpoints_AB.")
-    if cut_ABC and n_int_ABC:
-        print(
-            "Warning: cutpoints_ABC and n_int_ABC both specified. Using cutpoints_ABC."
+    if (cut_AB and n_int_AB) and len(cut_AB) != n_int_AB + 1:
+        raise ValueError(
+            "Error: cutpoints_AB must have n_int_AB + 1 values, check the config file."
+        )
+    if (cut_ABC and n_int_ABC) and len(cut_ABC) != n_int_ABC:
+        raise ValueError(
+            "Error: cutpoints_ABC must have n_int_ABC values, check the config file."
         )
 
     fixed_params = config["fixed_parameters"]
@@ -317,7 +319,11 @@ def main():
 
     for i, param in enumerate(optim_variables):
         fixed_dict[param] = optim_list[i]
-
+    if fixed_dict["t_upper"] < 0:
+        raise ValueError(
+            "Parameter 't_upper' must be a positive number. "
+            f"Given/calculated value: {fixed_dict['t_upper']}"
+        )
     if case == frozenset(["t_A", "t_B", "t_C"]):
         t_out = (
             (
@@ -458,17 +464,17 @@ def main():
     lower = pre_t_A
     upper = pre_t_A + pre_t_2
 
-    too_early = (abs_cut_ABC[0] < lower) and not math.isclose(
+    too_early = (abs_cut_AB[0] < lower) and not math.isclose(
         abs_cut_ABC[0], lower, rel_tol=1e-9, abs_tol=1e-12
     )
-    too_late = (abs_cut_ABC[-1] > upper) and not math.isclose(
+    too_late = (abs_cut_AB[-1] > upper) and not math.isclose(
         abs_cut_ABC[-1], upper, rel_tol=1e-9, abs_tol=1e-12
     )
 
     if too_early or too_late:
         raise ValueError(
             "cutpoints_AB must lie within [t_A, t_A + t_2]."
-            f"Given cutpoints_AB: {abs_cut_ABC}, t_A: {lower}, t_A + t_2: {upper}."
+            f"Given cutpoints_AB: {abs_cut_AB}, t_A: {lower}, t_A + t_2: {upper}."
         )
 
     lower = pre_t_A + pre_t_2
@@ -486,10 +492,18 @@ def main():
             f"Given cutpoints_ABC: {abs_cut_ABC}, t_A + t_2: {lower}, t_out: {upper}."
         )
 
-    print("Parameters validated, reading alignment.")
+    print("Parameters validated:")
+    print(f"Cutpoints AB: {abs_cut_AB}")
+    print(f"Cutpoints ABC: {abs_cut_ABC}")
     for key, value in fixed_dict.items():
-        print(f"{key}: {value / mu}")
+        if key != "n_int_AB" and key != "n_int_ABC" and key != "r":
+            print(f"{key}: {value / mu}")
+        elif key == "n_int_AB" or key == "n_int_ABC":
+            print(f"{key}: {value}")
+        else:
+            print(f"{key}: {value * mu}")
 
+    print("Reading MAF alignment file.")
     maf_alignment = maf_parser(maf_path, species_list)
     if maf_alignment is None:
         raise ValueError("Error reading MAF alignment file.")

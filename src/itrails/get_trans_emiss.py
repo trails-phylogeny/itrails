@@ -1,5 +1,6 @@
 import numpy as np
 
+from itrails.cutpoints import cutpoints_AB, cutpoints_ABC
 from itrails.get_emission_prob_mat import get_emission_prob_mat
 from itrails.get_joint_prob_mat import get_joint_prob_mat
 
@@ -86,6 +87,11 @@ def trans_emiss_calc(
     mu_D = N_ref * (4 / 3)
     mu_AB = N_ref * (4 / 3)
     mu_ABC = N_ref * (4 / 3)
+
+    if cut_AB == "standard":
+        cut_AB = cutpoints_AB(n_int_AB, t_AB, coal_AB)
+    if cut_ABC == "standard":
+        cut_ABC = cutpoints_ABC(n_int_ABC, coal_ABC)
 
     tr_dict = get_joint_prob_mat(
         t_A,
