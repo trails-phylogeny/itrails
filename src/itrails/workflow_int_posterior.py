@@ -520,8 +520,6 @@ def main():
         else:
             print(f"{key}: {value * mu}")
 
-
-""" 
     print("Reading MAF alignment file.")
     maf_alignment = maf_parser(maf_path, species_list)
     if maf_alignment is None:
@@ -623,7 +621,7 @@ def main():
             for pos_idx, row in enumerate(arr):
                 writer.writerow([block_idx, pos_idx] + row.tolist())
     print(f"Posterior decoding complete. Results saved to {output_file}.")
- """
+
 
 if __name__ == "__main__":
     main()
