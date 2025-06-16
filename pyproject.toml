@@ -23,7 +23,9 @@ dependencies = [
   "numba==0.59.1",
   "biopython==1.84",
   "pyyaml==6.0.2",
-  "h5py"
+  "h5py",
+  "pandas",
+  "ray[default]"
 ]
 
 [project.urls]
