@@ -3,8 +3,10 @@ import csv
 import math
 import os
 
+import pandas as pd
+
 from itrails.cutpoints import cutpoints_AB, cutpoints_ABC
-from itrails.get_trans_emiss import trans_emiss_calc
+from itrails.int_get_trans_emiss import trans_emiss_calc_introgression
 from itrails.ncpu import N_CPU, update_n_cpu
 from itrails.optimizer import post_prob_wrapper
 from itrails.read_data import maf_parser
@@ -15,7 +17,7 @@ from itrails.yaml_helpers import load_config
 
 
 def main():
-    """Command-line entry point for running posterior decoding."""
+    """Command-line entry point for running viterbi decoding."""
     parser = argparse.ArgumentParser(
         description="Run Posterior decoding using iTRAILS",
         usage="itrails-posterior <config.yaml> --input PATH_MAF --output OUTPUT_PATH",
@@ -103,6 +105,7 @@ def main():
     cut_ABC = config["settings"].get("cutpoints_ABC")
     n_int_AB = config["settings"].get("n_int_AB")
     n_int_ABC = config["settings"].get("n_int_ABC")
+    proportional_tm = config["settings"].get("proportional")
 
     if not n_int_AB and not cut_AB:
         raise ValueError(
@@ -141,7 +144,7 @@ def main():
     optim_variables = []
     optim_list = []
 
-    params = ["t_2", "N_ABC", "N_AB", "r"]
+    params = ["t_2", "N_ABC", "N_AB", "N_BC", "r", "t_m", "m"]
     for param in params:
         if param in fixed_params and param in optimized_params:
             raise ValueError(f"Parameter '{param}' cannot be both fixed and optimized.")
@@ -164,7 +167,7 @@ def main():
             optim_list.append(optimized_params[param])
         else:
             raise ValueError(
-                "Parameters 't_2', 'N_ABC', 'N_AB' and 'r' must be present in optimized or fixed parameters."
+                "Parameters 't_2', 'N_ABC', 'N_AB', 'N_BC, 't_m', 'm' and 'r' must be present in optimized or fixed parameters."
             )
 
     def process_parameter(param):
@@ -298,17 +301,32 @@ def main():
         fixed_dict["t_upper"] = fixed_params["t_upper"]
     # Optimized/fixed parameters validation
     for i, param in enumerate(optim_variables):
-        if param in fixed_params:
-            raise ValueError(
-                f"Parameter '{param}' cannot be present in both fixed and optimized parameters."
-            )
-        float_value = float(optim_list[i])
-        if not isinstance(float_value, (int, float)) or float_value <= 0:
-            raise ValueError(f"Value for '{param}' must be a positive number.")
-        if param == "r":
-            optim_list[i] = float_value / float(mu)
+        fixed_dict[param] = optim_list[i]
+
+    if proportional_tm:
+        if case == frozenset(["t_1"]):
+            if fixed_dict["t_m"] > 1:
+                raise ValueError(
+                    "If proportional t_m is wanted, please input t_m as a proportion (between 0 and 1)."
+                )
+            fixed_dict["t_m"] = fixed_dict["t_1"] * fixed_dict["t_m"]
         else:
-            optim_list[i] = float_value * float(mu)
+            raise ValueError(
+                "Proportional t_m is only supported for the case where only 't_1' is given, please input t_m as an absolute value (in generations) if you also input 't_A', 't_B' or 't_C'."
+            )
+
+    # for i, param in enumerate(optim_variables):
+    #    if param in fixed_params:
+    #        raise ValueError(
+    #            f"Parameter '{param}' cannot be present in both fixed and optimized parameters."
+    #        )
+    #    float_value = float(optim_list[i])
+    #    if not isinstance(float_value, (int, float)) or float_value <= 0:
+    #        raise ValueError(f"Value for '{param}' must be a positive number.")
+    #    if param == "r":
+    #        optim_list[i] = float_value / float(mu)
+    #    else:
+    #        optim_list[i] = float_value * float(mu)
 
     for param, values in fixed_dict.items():
         if param != "n_int_AB" and param != "n_int_ABC":
@@ -317,8 +335,8 @@ def main():
             else:
                 fixed_dict[param] = float(values) * float(mu)
 
-    for i, param in enumerate(optim_variables):
-        fixed_dict[param] = optim_list[i]
+    # for i, param in enumerate(optim_variables):
+    #    fixed_dict[param] = optim_list[i]
     if fixed_dict["t_upper"] < 0:
         raise ValueError(
             "Parameter 't_upper' must be a positive number. "
@@ -328,10 +346,10 @@ def main():
         t_out = (
             (
                 (
-                    ((fixed_dict["t_A"] + fixed_dict["t_B"]) / 2 + fixed_dict["t_2"])
-                    + fixed_dict["t_C"]
+                    (fixed_dict["t_A"] + (fixed_dict["t_B"] + fixed_dict["t_m"])) / 2
+                    + fixed_dict["t_2"]
                 )
-                / 2
+                + (fixed_dict["t_C"] + fixed_dict["t_m"] + fixed_dict["t_2"]) / 2
                 + norm_cut_ABC[-2] * fixed_dict["N_ABC"]
                 + fixed_dict["t_upper"]
                 + 2 * fixed_dict["N_ABC"]
@@ -342,8 +360,7 @@ def main():
         fixed_dict["t_out"] = t_out
 
     elif case == frozenset(["t_1", "t_A"]):
-        t_B = fixed_dict["t_1"]
-        t_C = fixed_dict["t_1"] + fixed_dict["t_2"]
+        t_B = t_C = fixed_dict["t_1"] - fixed_dict["t_m"]
         t_out = (
             fixed_dict["t_1"]
             + fixed_dict["t_2"]
@@ -359,7 +376,7 @@ def main():
         fixed_dict.pop("t_1")
     elif case == frozenset(["t_1", "t_B"]):
         t_A = fixed_dict["t_1"]
-        t_C = fixed_dict["t_1"] + fixed_dict["t_2"]
+        t_C = fixed_dict["t_1"] - fixed_dict["t_m"]
         t_out = (
             fixed_dict["t_1"]
             + fixed_dict["t_2"]
@@ -375,7 +392,7 @@ def main():
         fixed_dict.pop("t_1")
     elif case == frozenset(["t_1", "t_C"]):
         t_A = fixed_dict["t_1"]
-        t_B = fixed_dict["t_1"]
+        t_B = fixed_dict["t_1"] - fixed_dict["t_m"]
         t_out = (
             fixed_dict["t_1"]
             + fixed_dict["t_2"]
@@ -390,14 +407,14 @@ def main():
         fixed_dict["t_out"] = t_out
         fixed_dict.pop("t_1")
     elif case == frozenset(["t_A", "t_B"]):
-        t_C = (fixed_dict["t_A"] + fixed_dict["t_B"]) / 2 + fixed_dict["t_2"]
+        t_C = (fixed_dict["t_B"] + fixed_dict["t_A"] + fixed_dict["t_m"]) / 2
         t_out = (
             (
                 (
-                    ((fixed_dict["t_A"] + fixed_dict["t_B"]) / 2 + fixed_dict["t_2"])
-                    + t_C
+                    (fixed_dict["t_A"] + (fixed_dict["t_B"] + fixed_dict["t_m"])) / 2
+                    + fixed_dict["t_2"]
                 )
-                / 2
+                + (t_C + fixed_dict["t_m"] + fixed_dict["t_2"]) / 2
                 + norm_cut_ABC[-2] * fixed_dict["N_ABC"]
                 + fixed_dict["t_upper"]
                 + 2 * fixed_dict["N_ABC"]
@@ -408,14 +425,14 @@ def main():
         fixed_dict["t_C"] = t_C
         fixed_dict["t_out"] = t_out
     elif case == frozenset(["t_A", "t_C"]):
-        t_B = (fixed_dict["t_A"] + fixed_dict["t_C"] - fixed_dict["t_2"]) / 2
+        t_B = (fixed_dict["t_C"] + fixed_dict["t_A"] + fixed_dict["t_m"]) / 2
         t_out = (
             (
                 (
-                    ((fixed_dict["t_A"] + t_B) / 2 + fixed_dict["t_2"])
-                    + fixed_dict["t_C"]
+                    (fixed_dict["t_A"] + (t_B + fixed_dict["t_m"])) / 2
+                    + fixed_dict["t_2"]
                 )
-                / 2
+                + (fixed_dict["t_C"] + fixed_dict["t_m"] + fixed_dict["t_2"]) / 2
                 + norm_cut_ABC[-2] * fixed_dict["N_ABC"]
                 + fixed_dict["t_upper"]
                 + 2 * fixed_dict["N_ABC"]
@@ -426,14 +443,14 @@ def main():
         fixed_dict["t_B"] = t_B
         fixed_dict["t_out"] = t_out
     elif case == frozenset(["t_B", "t_C"]):
-        t_A = (fixed_dict["t_B"] + fixed_dict["t_C"] - fixed_dict["t_2"]) / 2
+        t_A = (fixed_dict["t_C"] + fixed_dict["t_B"] + fixed_dict["t_m"]) / 2
         t_out = (
             (
                 (
-                    ((t_A + fixed_dict["t_B"]) / 2 + fixed_dict["t_2"])
-                    + fixed_dict["t_C"]
+                    (t_A + (fixed_dict["t_B"] + fixed_dict["t_m"])) / 2
+                    + fixed_dict["t_2"]
                 )
-                / 2
+                + (fixed_dict["t_C"] + fixed_dict["t_m"] + fixed_dict["t_2"]) / 2
                 + norm_cut_ABC[-2] * fixed_dict["N_ABC"]
                 + fixed_dict["t_upper"]
                 + 2 * fixed_dict["N_ABC"]
@@ -444,8 +461,8 @@ def main():
         fixed_dict["t_A"] = t_A
         fixed_dict["t_out"] = t_out
     elif case == frozenset(["t_1"]):
-        t_A = t_B = fixed_dict["t_1"]
-        t_C = fixed_dict["t_1"] + fixed_dict["t_2"]
+        t_A = fixed_dict["t_1"]
+        t_C = t_B = fixed_dict["t_1"] - fixed_dict["t_m"]
         t_out = (
             fixed_dict["t_1"]
             + fixed_dict["t_2"]
@@ -503,22 +520,27 @@ def main():
         else:
             print(f"{key}: {value * mu}")
 
+
+""" 
     print("Reading MAF alignment file.")
     maf_alignment = maf_parser(maf_path, species_list)
     if maf_alignment is None:
         raise ValueError("Error reading MAF alignment file.")
 
     print("Calculating transition and emission probability matrices.")
-    a, b, pi, hidden_names, observed_names = trans_emiss_calc(
+    a, b, pi, hidden_names, observed_names = trans_emiss_calc_introgression(
         fixed_dict["t_A"],
         fixed_dict["t_B"],
         fixed_dict["t_C"],
         fixed_dict["t_2"],
         fixed_dict["t_upper"],
         fixed_dict["t_out"],
+        fixed_dict["t_m"],
         fixed_dict["N_AB"],
+        fixed_dict["N_BC"],
         fixed_dict["N_ABC"],
         fixed_dict["r"],
+        fixed_dict["m"],
         fixed_dict["n_int_AB"],
         fixed_dict["n_int_ABC"],
         norm_cut_AB,
@@ -530,53 +552,51 @@ def main():
         print(f"Warning: File '{hidden_file}' already exists.")
         hidden_file = os.path.join(output_dir, f"{output_prefix}.hidden_states_2.csv")
         print("Using an alternative file name: {hidden_file}")
-    topology_map = {
+    topology_map = {  # Ask iker
         0: "({sp1,sp2},sp3)",
         1: "((sp1,sp2),sp3)",
         2: "((sp1,sp3),sp2)",
         3: "((sp2,sp3),sp1)",
+        4: "({sp2,sp3},sp1)",
     }
-    with open(hidden_file, "w", newline="") as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(
-            [
-                "state_idx",
-                "topology",
-                "interval_1st_coalescent",
-                "interval_2nd_coalescent",
-                "shorthand_name",
-            ]
+    records = []
+    for state_idx, shorthand in hidden_names.items():
+        key_val, idx1, idx2 = shorthand
+
+        # first‐coalescent interval
+        if key_val == 0:
+            a, b = abs_cut_AB[idx1], abs_cut_AB[idx1 + 1]
+        else:
+            a, b = abs_cut_ABC[idx1], abs_cut_ABC[idx1 + 1]
+        interval_1 = f"{a:.2f}-{b:.2f}"
+
+        # second‐coalescent always in ABC
+        c, d = abs_cut_ABC[idx2], abs_cut_ABC[idx2 + 1]
+        interval_2 = f"{c:.2f}-{d:.2f}"
+
+        records.append(
+            {
+                "state_idx": state_idx,
+                "topology": topology_map.get(key_val, "Unknown"),
+                "interval_1st_coalescent": interval_1,
+                "interval_2nd_coalescent": interval_2,
+                "shorthand_name": shorthand,
+            }
         )
-        for state_idx, shorthand in hidden_names.items():
-            key_val = shorthand[0]
 
-            topology = topology_map.get(key_val, "Unknown")
+    # --- 4) dump via pandas in one shot ---
+    out_df = pd.DataFrame.from_records(
+        records,
+        columns=[
+            "state_idx",
+            "topology",
+            "interval_1st_coalescent",
+            "interval_2nd_coalescent",
+            "shorthand_name",
+        ],
+    )
+    out_df.to_csv(hidden_file, index=False)
 
-            # For V0 states (key_val == 0), first coalescent is in AB interval
-            if key_val == 0:
-                interval_1_0 = abs_cut_AB[shorthand[1]]
-                interval_1_1 = abs_cut_AB[shorthand[1] + 1]
-            else:
-                # For V1, V2, V3 states, first coalescent is in ABC interval
-                interval_1_0 = abs_cut_ABC[shorthand[1]]
-                interval_1_1 = abs_cut_ABC[shorthand[1] + 1]
-
-            interval_1_text = f"{interval_1_0:.2f}-{interval_1_1:.2f}"
-
-            # Second coalescent is always in ABC interval
-            interval_2_0 = abs_cut_ABC[shorthand[2]]
-            interval_2_1 = abs_cut_ABC[shorthand[2] + 1]
-            interval_2_text = f"{interval_2_0:.2f}-{interval_2_1:.2f}"
-
-            writer.writerow(
-                [
-                    state_idx,
-                    topology,
-                    interval_1_text,
-                    interval_2_text,
-                    shorthand,
-                ]
-            )
     print(f"Hidden states written to file {hidden_file}.")
 
     print("Running posterior decoding.")
@@ -603,7 +623,7 @@ def main():
             for pos_idx, row in enumerate(arr):
                 writer.writerow([block_idx, pos_idx] + row.tolist())
     print(f"Posterior decoding complete. Results saved to {output_file}.")
-
+ """
 
 if __name__ == "__main__":
     main()
