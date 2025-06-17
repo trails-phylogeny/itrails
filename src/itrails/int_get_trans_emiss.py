@@ -107,6 +107,9 @@ def trans_emiss_calc_introgression(
         if cut_ABC == "standard":
             cut_ABC = cutpoints_ABC(n_int_ABC, coal_ABC)
 
+    cut_AB = np.asarray(cut_AB, dtype=float)
+    cut_ABC = np.asarray(cut_ABC, dtype=float)
+
     tr = get_joint_prob_mat_introgression(
         t_A,
         t_B,
