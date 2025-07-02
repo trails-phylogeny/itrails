@@ -26,6 +26,7 @@ def main():
     parser.add_argument(
         "config_file",
         type=str,
+        required=False,
         help="Path to the YAML config file.",
     )
 

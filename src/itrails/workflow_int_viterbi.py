@@ -20,12 +20,13 @@ def main():
     """Command-line entry point for running viterbi decoding."""
     parser = argparse.ArgumentParser(
         description="Run Viterbi decoding using iTRAILS",
-        usage="itrails-viterbi <config.yaml> --input PATH_MAF --output OUTPUT_PATH",
+        usage="itrails-int-viterbi <config.yaml> --input PATH_MAF --output OUTPUT_PATH --PARAMETERS",
     )
 
     parser.add_argument(
         "config_file",
         type=str,
+        required=False,
         help="Path to the YAML config file.",
     )
 
@@ -43,13 +44,116 @@ def main():
         help="Path and prefix for output files to be stored. Format: 'directory/prefix'.",
     )
 
+    # Parameter arguments
+    parser.add_argument("--mu", type=float, help="Mutation rate")
+    parser.add_argument("--t1", type=float, help="Time parameter t_1")
+    parser.add_argument("--t_A", type=float, help="Time to speciation for species A")
+    parser.add_argument("--t_B", type=float, help="Time to speciation for species B")
+    parser.add_argument("--t_C", type=float, help="Time to speciation for species C")
+    parser.add_argument(
+        "--t2", type=float, help="Time between first and second speciation"
+    )
+    parser.add_argument("--t_m", type=float, help="Time parameter t_m")
+    parser.add_argument("--t3", type=float, help="Time parameter t_3")
+    parser.add_argument("--t_upper", type=float, help="Upper time parameter")
+    parser.add_argument("--t_out", type=float, help="Outgroup time parameter")
+    parser.add_argument("--N_AB", type=float, help="Effective population size for AB")
+    parser.add_argument("--N_ABC", type=float, help="Effective population size for ABC")
+    parser.add_argument("--N_BC", type=float, help="Effective population size for BC")
+    parser.add_argument("--r", type=float, help="Recombination rate")
+    parser.add_argument("--m", type=float, help="Migration rate between species")
+
+    # Settings arguments
+    parser.add_argument("--n_cpu", type=int, help="Number of CPUs to use")
+    parser.add_argument("--species_list", nargs="+", help="List of species names")
+    parser.add_argument("--n_int_AB", type=int, help="Number of intervals for AB")
+    parser.add_argument("--n_int_ABC", type=int, help="Number of intervals for ABC")
+    parser.add_argument(
+        "--cutpoints_AB",
+        nargs="+",
+        type=float,
+        help="Manual cutpoints for AB intervals",
+    )
+    parser.add_argument(
+        "--cutpoints_ABC",
+        nargs="+",
+        type=float,
+        help="Manual cutpoints for ABC intervals",
+    )
+
     args = parser.parse_args()
 
-    config_path = args.config_file
-    config = load_config(config_path)
+    # Initialize config dictionary
+    config = {"fixed_parameters": {}, "optimized_parameters": {}, "settings": {}}
 
-    input_config = config["settings"]["input_maf"]
-    output_config = config["settings"]["output_prefix"]
+    # Load config file if provided
+    if args.config_file:
+        config = load_config(args.config_file)
+
+    # Override config with command-line arguments
+    # Handle mu specially as it's always in fixed_parameters
+    if args.mu is not None:
+        config["fixed_parameters"]["mu"] = args.mu
+    elif "mu" not in config["fixed_parameters"]:
+        raise ValueError(
+            "Error: mu must be specified either in config file or via --mu"
+        )
+
+    # Handle time parameters - these can be in either fixed or optimized
+    time_params = {
+        "t_1": args.t1,
+        "t_m": args.t_m,
+        "t_A": args.t_A,
+        "t_B": args.t_B,
+        "t_C": args.t_C,
+        "t_2": args.t2,
+        "t_3": args.t3,
+        "t_upper": args.t_upper,
+        "t_out": args.t_out,
+    }
+
+    for param, value in time_params.items():
+        if value is not None:
+            # Remove from optimized if present
+            if param in config["optimized_parameters"]:
+                del config["optimized_parameters"][param]
+            # Add to fixed parameters
+            config["fixed_parameters"][param] = value
+
+    # Handle population and recombination parameters
+    other_params = {
+        "N_AB": args.N_AB,
+        "N_ABC": args.N_ABC,
+        "r": args.r,
+        "N_BC": args.N_BC,
+        "m": args.m,
+    }
+
+    for param, value in other_params.items():
+        if value is not None:
+            # Remove from optimized if present
+            if param in config["optimized_parameters"]:
+                del config["optimized_parameters"][param]
+            # Add to fixed parameters
+            config["fixed_parameters"][param] = value
+
+    # Handle settings
+    if args.n_cpu is not None:
+        config["settings"]["n_cpu"] = args.n_cpu
+    if args.species_list is not None:
+        config["settings"]["species_list"] = args.species_list
+    if args.n_int_AB is not None:
+        config["settings"]["n_int_AB"] = args.n_int_AB
+    if args.n_int_ABC is not None:
+        config["settings"]["n_int_ABC"] = args.n_int_ABC
+    if args.cutpoints_AB is not None:
+        config["settings"]["cutpoints_AB"] = args.cutpoints_AB
+    if args.cutpoints_ABC is not None:
+        config["settings"]["cutpoints_ABC"] = args.cutpoints_ABC
+
+    # Handle input/output
+    input_config = config["settings"].get("input_maf")
+    output_config = config["settings"].get("output_prefix")
     input_cmd = args.input
     output_cmd = args.output
 
