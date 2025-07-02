@@ -25,4 +25,4 @@ settings:
   species_list: ["hg38", "panTro5", "gorGor5", "ponAbe2"]
   n_int_AB: 3
   n_int_ABC: 3
-  proportional: True
+  proportional: False

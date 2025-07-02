@@ -5,7 +5,9 @@ from math import inf
 import yaml
 
 from itrails.cutpoints import cutpoints_ABC
+from itrails.int_optimizer import optimizer_introgression
 from itrails.ncpu import N_CPU, update_n_cpu
+from itrails.read_data import maf_parser
 from itrails.yaml_helpers import FlowSeq, load_config
 
 ## URL of the example MAF file on Zenodo
@@ -98,6 +100,12 @@ def main():
     else:
         # If not specified, we leave N_CPU as the default
         print(f"No CPU count specified in config; using default {N_CPU} cores.")
+
+    proportional_tm = config["settings"].get("proportional")
+    if proportional_tm:
+        raise ValueError(
+            "Proportional t_m is currently not supported in the optimization workflow. Please provide t_m as an absolute value in generations."
+        )
 
     # Extract fixed parameters
     fixed_params = config["fixed_parameters"]
@@ -442,33 +450,27 @@ def main():
     with open(best_model_yaml, "w") as f:
         yaml.dump(starting_best_model, f)
 
-    print(optim_variables)
-    print(optim_list)
-    print(bounds_list)
-    print(fixed_dict)
-    print(case)
-
-    # maf_alignment = maf_parser(maf_path, species_list)
-    # if maf_alignment is None:
-    #    raise ValueError("Error reading MAF alignment file.")
+    maf_alignment = maf_parser(maf_path, species_list)
+    if maf_alignment is None:
+        raise ValueError("Error reading MAF alignment file.")
 
     print("Running optimization...")
-    # optimizer_introgression(
-    #    optim_variables=optim_variables,
-    #    optim_list=optim_list,
-    #    bounds=bounds_list,
-    #    fixed_params=fixed_dict,
-    #    V_lst=maf_alignment,
-    #    res_name=user_output,
-    #    case=case,
-    #    method=method,
-    #    header=True,
-    # )
+    optimizer_introgression(
+        optim_variables=optim_variables,
+        optim_list=optim_list,
+        bounds=bounds_list,
+        fixed_params=fixed_dict,
+        V_lst=maf_alignment,
+        res_name=user_output,
+        case=case,
+        method=method,
+        header=True,
+    )
 
     print(
-        f"Optimization complete. Results saved to {os.path.join(
-        output_dir, f"{output_prefix}_optimization_history.csv"
-    )}.\n Best model saved to {best_model_yaml}."
+        f"Optimization complete. Results saved to {
+            os.path.join(output_dir, f'{output_prefix}_optimization_history.csv')
+        }.\n Best model saved to {best_model_yaml}."
     )
 
 

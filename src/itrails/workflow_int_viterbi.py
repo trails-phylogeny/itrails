@@ -8,7 +8,7 @@ import pandas as pd
 from itrails.cutpoints import cutpoints_AB, cutpoints_ABC
 from itrails.int_get_trans_emiss import trans_emiss_calc_introgression
 from itrails.ncpu import N_CPU, update_n_cpu
-from itrails.optimizer import post_prob_wrapper
+from itrails.optimizer import viterbi_wrapper
 from itrails.read_data import maf_parser
 from itrails.yaml_helpers import load_config
 
@@ -17,10 +17,10 @@ from itrails.yaml_helpers import load_config
 
 
 def main():
-    """Command-line entry point for running posterior decoding."""
+    """Command-line entry point for running viterbi decoding."""
     parser = argparse.ArgumentParser(
-        description="Run Posterior decoding using iTRAILS",
-        usage="itrails-posterior <config.yaml> --input PATH_MAF --output OUTPUT_PATH",
+        description="Run Viterbi decoding using iTRAILS",
+        usage="itrails-viterbi <config.yaml> --input PATH_MAF --output OUTPUT_PATH",
     )
 
     parser.add_argument(
@@ -93,7 +93,7 @@ def main():
     output_dir, output_prefix = os.path.split(user_output)
     os.makedirs(output_dir, exist_ok=True)
 
-    print(f"Results will be saved to: {output_dir} as '{output_prefix}.posterior.csv'.")
+    print(f"Results will be saved to: {output_dir} as '{output_prefix}.viterbi.csv'.")
 
     requested_cores = config["settings"].get("n_cpu")
     if requested_cores is not None:
@@ -598,18 +598,18 @@ def main():
 
     print(f"Hidden states written to file {hidden_file}.")
 
-    print("Running posterior decoding.")
+    print("Running viterbi decoding.")
 
-    posterior_results = post_prob_wrapper(a=a, b=b, pi=pi, V_lst=maf_alignment)
+    viterbi_results = viterbi_wrapper(a=a, b=b, pi=pi, V_lst=maf_alignment)
 
     print("Writing results to file.")
 
-    output_file = os.path.join(output_dir, f"{output_prefix}.posterior.csv")
+    output_file = os.path.join(output_dir, f"{output_prefix}.viterbi.csv")
     with open(output_file, "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
 
-        if posterior_results:
-            n_states = posterior_results[0].shape[1]
+        if viterbi_results:
+            n_states = viterbi_results[0].shape[1]
         else:
             n_states = 0
 
@@ -618,10 +618,10 @@ def main():
         ]
         writer.writerow(header)
 
-        for block_idx, arr in enumerate(posterior_results):
+        for block_idx, arr in enumerate(viterbi_results):
             for pos_idx, row in enumerate(arr):
                 writer.writerow([block_idx, pos_idx] + row.tolist())
-    print(f"Posterior decoding complete. Results saved to {output_file}.")
+    print(f"Viterbi decoding complete. Results saved to {output_file}.")
 
 
 if __name__ == "__main__":

@@ -56,3 +56,7 @@ docs = [
 itrails-optimize = "itrails.workflow_optimize:main"
 itrails-viterbi = "itrails.workflow_viterbi:main"
 itrails-posterior = "itrails.workflow_posterior:main"
+itrails-int-optimize = "itrails.workflow_int_optimize:main"
+itrails-int-viterbi = "itrails.workflow_int_viterbi:main"
+itrails-int-posterior = "itrails.workflow_int_posterior:main"
+

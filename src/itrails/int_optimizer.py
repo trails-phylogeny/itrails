@@ -408,7 +408,7 @@ def optimization_wrapper_introgression(
             (
                 ((d_copy["t_A"] + (d_copy["t_B"] + d_copy["t_m"])) / 2 + d_copy["t_2"])
                 + (d_copy["t_C"] + d_copy["t_m"] + d_copy["t_2"]) / 2
-                + cut_ABC[-2] * d_copy["N_ABC"]
+                + cut_ABC[d_copy["n_int_ABC"] - 1] * d_copy["N_ABC"]
                 + d_copy["t_upper"]
                 + 2 * d_copy["N_ABC"]
             )
@@ -418,12 +418,11 @@ def optimization_wrapper_introgression(
         d_copy["t_out"] = t_out
 
     elif case == frozenset(["t_1", "t_A"]):
-        t_B = d_copy["t_1"] - d_copy["t_m"]  # check and error if t_m > t_A
-        t_C = d_copy["t_1"] - d_copy["t_m"]
+        t_B = t_C = d_copy["t_1"] - d_copy["t_m"]
         t_out = (
             d_copy["t_1"]
             + d_copy["t_2"]
-            + cut_ABC[-2] * d_copy["N_ABC"]
+            + cut_ABC[d_copy["n_int_ABC"] - 1] * d_copy["N_ABC"]
             + d_copy["t_upper"]
             + 2 * d_copy["N_ABC"]
             if "t_out" not in d_copy
@@ -433,14 +432,13 @@ def optimization_wrapper_introgression(
         d_copy["t_C"] = t_C
         d_copy["t_out"] = t_out
         d_copy.pop("t_1")
-
     elif case == frozenset(["t_1", "t_B"]):
         t_A = d_copy["t_1"]
         t_C = d_copy["t_1"] - d_copy["t_m"]
         t_out = (
             d_copy["t_1"]
             + d_copy["t_2"]
-            + cut_ABC[-2] * d_copy["N_ABC"]
+            + cut_ABC[d_copy["n_int_ABC"] - 1] * d_copy["N_ABC"]
             + d_copy["t_upper"]
             + 2 * d_copy["N_ABC"]
             if "t_out" not in d_copy
@@ -450,14 +448,13 @@ def optimization_wrapper_introgression(
         d_copy["t_C"] = t_C
         d_copy["t_out"] = t_out
         d_copy.pop("t_1")
-
     elif case == frozenset(["t_1", "t_C"]):
         t_A = d_copy["t_1"]
         t_B = d_copy["t_1"] - d_copy["t_m"]
         t_out = (
             d_copy["t_1"]
             + d_copy["t_2"]
-            + cut_ABC[-2] * d_copy["N_ABC"]
+            + cut_ABC[d_copy["n_int_ABC"] - 1] * d_copy["N_ABC"]
             + d_copy["t_upper"]
             + 2 * d_copy["N_ABC"]
             if "t_out" not in d_copy
@@ -467,14 +464,13 @@ def optimization_wrapper_introgression(
         d_copy["t_B"] = t_B
         d_copy["t_out"] = t_out
         d_copy.pop("t_1")
-
     elif case == frozenset(["t_A", "t_B"]):
         t_C = (d_copy["t_B"] + d_copy["t_A"] + d_copy["t_m"]) / 2
         t_out = (
             (
                 ((d_copy["t_A"] + (d_copy["t_B"] + d_copy["t_m"])) / 2 + d_copy["t_2"])
                 + (t_C + d_copy["t_m"] + d_copy["t_2"]) / 2
-                + cut_ABC[-2] * d_copy["N_ABC"]
+                + cut_ABC[d_copy["n_int_ABC"] - 1] * d_copy["N_ABC"]
                 + d_copy["t_upper"]
                 + 2 * d_copy["N_ABC"]
             )
@@ -489,7 +485,7 @@ def optimization_wrapper_introgression(
             (
                 ((d_copy["t_A"] + (t_B + d_copy["t_m"])) / 2 + d_copy["t_2"])
                 + (d_copy["t_C"] + d_copy["t_m"] + d_copy["t_2"]) / 2
-                + cut_ABC[-2] * d_copy["N_ABC"]
+                + cut_ABC[d_copy["n_int_ABC"] - 1] * d_copy["N_ABC"]
                 + d_copy["t_upper"]
                 + 2 * d_copy["N_ABC"]
             )
@@ -499,12 +495,12 @@ def optimization_wrapper_introgression(
         d_copy["t_B"] = t_B
         d_copy["t_out"] = t_out
     elif case == frozenset(["t_B", "t_C"]):
-        t_A = (d_copy["t_B"] + d_copy["t_m"] + d_copy["t_C"] + d_copy["t_m"]) / 2
+        t_A = (d_copy["t_C"] + d_copy["t_B"] + d_copy["t_m"]) / 2
         t_out = (
             (
                 ((t_A + (d_copy["t_B"] + d_copy["t_m"])) / 2 + d_copy["t_2"])
                 + (d_copy["t_C"] + d_copy["t_m"] + d_copy["t_2"]) / 2
-                + cut_ABC[-2] * d_copy["N_ABC"]
+                + cut_ABC[d_copy["n_int_ABC"] - 1] * d_copy["N_ABC"]
                 + d_copy["t_upper"]
                 + 2 * d_copy["N_ABC"]
             )
@@ -515,11 +511,11 @@ def optimization_wrapper_introgression(
         d_copy["t_out"] = t_out
     elif case == frozenset(["t_1"]):
         t_A = d_copy["t_1"]
-        t_B = t_C = d_copy["t_1"] - d_copy["t_m"]
+        t_C = t_B = d_copy["t_1"] - d_copy["t_m"]
         t_out = (
             d_copy["t_1"]
             + d_copy["t_2"]
-            + cut_ABC[-2] * d_copy["N_ABC"]
+            + cut_ABC[d_copy["n_int_ABC"] - 1] * d_copy["N_ABC"]
             + d_copy["t_upper"]
             + 2 * d_copy["N_ABC"]
             if "t_out" not in d_copy
@@ -531,37 +527,6 @@ def optimization_wrapper_introgression(
         d_copy["t_out"] = t_out
         d_copy.pop("t_1")
 
-    # Define time model (optimized parameters)
-    if "proportional" in d:
-        t_1, t_2, t_upper, t_m_prop, N_AB, N_BC, N_ABC, r, m = arg_lst
-        t_A = t_1
-        t_m = t_1 * t_m_prop
-        t_B = t_C = t_1 - t_m
-        cut_ABC = cutpoints_ABC(d["n_int_ABC"], 1)
-        t_out = t_1 + t_2 + cut_ABC[d["n_int_ABC"] - 1] * N_ABC + t_upper + 2 * N_ABC
-    elif len(arg_lst) == 9:
-        t_1, t_2, t_upper, t_m, N_AB, N_BC, N_ABC, r, m = arg_lst
-        t_A = t_1
-        t_B = t_C = t_1 - t_m
-        cut_ABC = cutpoints_ABC(d["n_int_ABC"], 1)
-        t_out = t_1 + t_2 + cut_ABC[d["n_int_ABC"] - 1] * N_ABC + t_upper + 2 * N_ABC
-    elif len(arg_lst) == 10:
-        t_1, t_C, t_2, t_upper, t_m, N_AB, N_BC, N_ABC, r, m = arg_lst
-        t_A = t_1
-        t_B = t_1 - t_m
-        cut_ABC = cutpoints_ABC(d["n_int_ABC"], 1)
-        t_out = t_1 + t_2 + cut_ABC[d["n_int_ABC"] - 1] * N_ABC + t_upper + 2 * N_ABC
-    elif len(arg_lst) == 12:
-        t_A, t_B, t_C, t_2, t_upper, t_out, t_m, N_AB, N_BC, N_ABC, r, m = arg_lst
-    elif len(arg_lst) == 11:
-        t_A, t_B, t_C, t_2, t_upper, t_m, N_AB, N_BC, N_ABC, r, m = arg_lst
-        cut_ABC = cutpoints_ABC(d["n_int_ABC"], 1)
-        t_out = (
-            (((t_A + (t_B + t_m)) / 2 + t_2) + (t_C + t_m + t_2)) / 2
-            + cut_ABC[d["n_int_ABC"] - 1] * N_ABC
-            + t_upper
-            + 2 * N_ABC
-        )
     # Calculate transition and emission probabilities
     a, b, pi, hidden_names, observed_names = trans_emiss_calc_introgression(
         d_copy["t_A"],
@@ -678,7 +643,7 @@ def optimizer_introgression(
             d_copy,
             V_lst,
             res_name,
-            {"Nfeval": 0, "time": time.time()},
+            {"Nfeval": 0, "time": time.time(), "tmp_path": tmp_path},
         ),
         method=method,
         bounds=bounds,

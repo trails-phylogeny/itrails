@@ -147,21 +147,21 @@ def main():
             raise ValueError(f"Parameter '{param}' cannot be both fixed and optimized.")
         if param in fixed_params:
             if param == "t_2":
-                pre_t_2 = fixed_params[param]
+                pre_t_2 = float(fixed_params[param])
             if param == "N_ABC":
-                pre_N_ABC = fixed_params[param]
+                pre_N_ABC = float(fixed_params[param])
             if param == "N_AB":
-                pre_N_AB = fixed_params[param]
-            fixed_dict[param] = fixed_params[param]
+                pre_N_AB = float(fixed_params[param])
+            fixed_dict[param] = float(fixed_params[param])
         elif param in optimized_params:
             if param == "t_2":
-                pre_t_2 = optimized_params[param]
+                pre_t_2 = float(optimized_params[param])
             if param == "N_ABC":
-                pre_N_ABC = optimized_params[param]
+                pre_N_ABC = float(optimized_params[param])
             if param == "N_AB":
-                pre_N_AB = optimized_params[param]
+                pre_N_AB = float(optimized_params[param])
             optim_variables.append(param)
-            optim_list.append(optimized_params[param])
+            optim_list.append(float(optimized_params[param]))
         else:
             raise ValueError(
                 "Parameters 't_2', 'N_ABC', 'N_AB' and 'r' must be present in optimized or fixed parameters."
@@ -172,10 +172,10 @@ def main():
             raise ValueError(f"Parameter '{param}' cannot be both fixed and optimized.")
         if param in fixed_params:
             found_values.add(param)
-            return fixed_params[param], True
+            return float(fixed_params[param]), True
         elif param in optimized_params:
             found_values.add(param)
-            return optimized_params[param], False
+            return float(optimized_params[param]), False
         return None, None
 
     t_1, t_1_fixed = process_parameter("t_1")
