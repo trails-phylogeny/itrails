@@ -141,3 +141,81 @@ def maf_parser_new_method(file, sp_lst):
                 )
             total_lst.append(idx_lst)
     return total_lst
+
+
+def parse_coordinates(file, sp_lst, ref):
+    """Parses the coordinates of a MAF file polarized by a reference sequence. The reference does not need to be one of the species used for Viterbi or posterior decoding.
+
+    :param file: path to the MAF file. 
+    :type file: str.
+    :param sp_lst: list of species names (expected length 4) to extract sequences for.
+    :type sp_lst: list[str].
+    :param ref: name of the reference to polarize the coordinates.
+    :type ref: str.
+    :return: list of numpy arrays where each array contains the state indices for a block. :rtype: list[list].
+    """
+    seq_list = []
+    start_list = []
+    strand_list = []
+    chromsize_list = []
+    # For each block
+    for multiple_alignment in AlignIO.parse(file, "maf"):
+        start = float('nan')
+        ref_seq = ''
+        # For each sequence in the alignment block
+        acc = 0
+        for seqrec in multiple_alignment:
+            if seqrec.name.split('.')[0] in sp_lst:
+                length = len(str(seqrec.seq))
+                acc += 1
+            if seqrec.name.split('.')[0] == ref:
+                # Save the start position of the block in human coordinates
+                start = seqrec.annotations['start']
+                # Save nucleotides as ones and gaps as zeros
+                ref_seq = ''.join([str(int(j!='-')) for j in str(seqrec.seq)])
+                strand = seqrec.annotations['strand']
+                chrom_size = seqrec.annotations["srcSize"]
+                
+        # Append information to list
+        if acc == 4: 
+            if ref_seq != '':
+                start_list.append(start)
+                seq_list.append(ref_seq)
+                strand_list.append(strand)
+                chromsize_list.append(chrom_size)
+            else:
+                start_list.append(start)
+                seq_list.append('0'*length)
+                strand_list.append(0)
+                chromsize_list.append(0)
+
+    tot_lst = []
+    # For each block
+    for i in range(len(start_list)):
+        # If forward strand, save coordinate as is
+        if strand_list[i] == 1:
+            st = start_list[i]
+        # If reverse strand, save coordinate in reverse
+        elif strand_list[i] == -1:
+            st = chromsize_list[i] - start_list[i]
+        # If sequence is missing, append -9
+        elif strand_list[i] == 0:
+            tot_lst.append([-9]*len(seq_list[i]))
+            continue
+        tmp_lst = []
+        # For each site in the ref sequence
+        for j in seq_list[i]:
+            # If the site is not a gap
+            if j == '1':
+                # Append position
+                tmp_lst.append(st)
+                # Update coordinate (backwards if strand is -1)
+                st += strand_list[i]
+            # If it is a gap
+            else:
+                # Append -9
+                tmp_lst.append(-9)
+        tot_lst.append(tmp_lst)
+    
+    return tot_lst
+

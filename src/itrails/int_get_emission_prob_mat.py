@@ -775,12 +775,12 @@ def get_emission_prob_mat_introgression(
     This function returns the emission probabilities of all hidden states
     given a set of population genetics parameters. 
         
-            |          |
-            |  ABC  |\ \
-            | AB |\ \ \ \
-            / /\ \ \ \ \ \
-           / /  \ \ \ \ \ \
-           A      B   C   D
+    #        |          |
+    #        |  ABC  |\ \ 
+    #        | AB |\ \ \ \ 
+    #        / /\ \ \ \ \ \ 
+    #       / /  \ \ \ \ \ \ 
+    #       A      B   C   D
         
     Parameters
     ----------

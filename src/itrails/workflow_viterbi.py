@@ -2,13 +2,15 @@ import argparse
 import csv
 import math
 import os
+import sys
 
 from itrails.cutpoints import cutpoints_AB, cutpoints_ABC
 from itrails.get_trans_emiss import trans_emiss_calc
 from itrails.ncpu import N_CPU, update_n_cpu
 from itrails.optimizer import viterbi_wrapper
-from itrails.read_data import maf_parser
+from itrails.read_data import maf_parser, parse_coordinates
 from itrails.yaml_helpers import load_config
+from itrails._version import __version__
 
 ## URL of the example MAF file on Zenodo
 # EXAMPLE_MAF_URL = "https://zenodo.org/records/14930374/files/example_alignment.maf"
@@ -18,11 +20,15 @@ def main():
     """Command-line entry point for running viterbi decoding."""
     parser = argparse.ArgumentParser(
         description="Run Viterbi decoding using iTRAILS",
-        usage="itrails-viterbi <config.yaml> --input PATH_MAF --output OUTPUT_PATH --PARAMETERS",
+        usage="itrails-viterbi --config-file CONFIG_FILE --input PATH_MAF --output OUTPUT_PATH --PARAMETERS",
     )
+    parser.add_argument('--version', action='version', version='%(prog)s {version}'.format(version=__version__))
+    if len(sys.argv) == 1:
+        parser.print_usage()
+        sys.exit("Error: No arguments provided. Please provide either a config file, command-line parameters, or both.")
 
     parser.add_argument(
-        "config_file",
+        "--config-file",
         type=str,
         required=False,
         help="Path to the YAML config file.",
@@ -61,6 +67,7 @@ def main():
     # Settings arguments
     parser.add_argument("--n_cpu", type=int, help="Number of CPUs to use")
     parser.add_argument("--species_list", nargs="+", help="List of species names")
+    parser.add_argument("--reference", type=str, help="Reference to polarize coordinates")
     parser.add_argument("--n_int_AB", type=int, help="Number of intervals for AB")
     parser.add_argument("--n_int_ABC", type=int, help="Number of intervals for ABC")
     parser.add_argument(
@@ -134,6 +141,8 @@ def main():
         config["settings"]["n_cpu"] = args.n_cpu
     if args.species_list is not None:
         config["settings"]["species_list"] = args.species_list
+    if args.reference is not None:
+        config["settings"]["reference"] = args.reference
     if args.n_int_AB is not None:
         config["settings"]["n_int_AB"] = args.n_int_AB
     if args.n_int_ABC is not None:
@@ -605,6 +614,8 @@ def main():
     maf_alignment = maf_parser(maf_path, species_list)
     if maf_alignment is None:
         raise ValueError("Error reading MAF alignment file.")
+    if settings.get("reference") is not None:
+        ref_coordinates = parse_coordinates(maf_path, species_list, settings.get("reference"))
 
     print("Calculating transition and emission probability matrices.")
     a, b, pi, hidden_names, observed_names = trans_emiss_calc(
@@ -687,22 +698,50 @@ def main():
         for block_idx, res in enumerate(viterbi_result):
             if len(res) == 0:
                 continue
-            segment_start = 0
-            current_state = res[0]
-            for pos in range(1, len(res)):
-                if res[pos] != current_state:
-                    writer.writerow(
-                        [
-                            block_idx,
-                            segment_start,
-                            pos - 1,
-                            current_state,
-                        ]
-                    )
-                    segment_start = pos
-                    current_state = res[pos]
-            # Write the final segment for this block
-            writer.writerow([block_idx, segment_start, len(res) - 1, current_state])
+            if settings.get("reference") is None:
+                segment_start = 0
+                current_state = res[0]
+                for pos in range(1, len(res)):
+                    if res[pos] != current_state:
+                        writer.writerow(
+                            [
+                                block_idx,
+                                segment_start,
+                                pos - 1,
+                                current_state,
+                            ]
+                        )
+                        segment_start = pos
+                        current_state = res[pos]
+                # Write the final segment for this block
+                writer.writerow([block_idx, segment_start, len(res) - 1, current_state])
+            else:
+                first_non_null = next((i for i, x in enumerate(ref_coordinates[block_idx]) if x != -9), None)
+                # If there is a coordinate that is not -9
+                if first_non_null is not None:
+                    segment_start = ref_coordinates[block_idx][first_non_null]
+                    current_non_null = segment_start
+                    current_state = res[first_non_null]
+                    for pos in range(first_non_null, len(res)):
+                        if segment_start == -9:
+                            segment_start = ref_coordinates[block_idx][pos]
+                            current_state = res[pos]
+                            current_non_null = segment_start
+                            continue
+                        if res[pos] != current_state:
+                            writer.writerow(
+                                [
+                                    block_idx,
+                                    segment_start,
+                                    current_non_null,
+                                    current_state,
+                                ]
+                            )
+                            segment_start = ref_coordinates[block_idx][pos]
+                            current_state = res[pos]
+                        current_non_null = ref_coordinates[block_idx][pos] if ref_coordinates[block_idx][pos] != -9 else current_non_null
+                    if not (segment_start == current_non_null == -9):
+                        writer.writerow([block_idx, segment_start, current_non_null, current_state])
 
     print(f"Viterbi decoding complete. Results saved to {output_file}.")
 

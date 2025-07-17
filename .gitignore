@@ -175,3 +175,4 @@ cython_debug/
 
 # Alignment files
 *.maf
+src/itrails/_version.py

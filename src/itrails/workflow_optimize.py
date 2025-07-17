@@ -9,6 +9,7 @@ from itrails.ncpu import N_CPU, update_n_cpu
 from itrails.optimizer import optimizer
 from itrails.read_data import maf_parser
 from itrails.yaml_helpers import FlowSeq, load_config
+from itrails._version import __version__
 
 ## URL of the example MAF file on Zenodo
 # EXAMPLE_MAF_URL = "https://zenodo.org/records/14930374/files/example_alignment.maf"
@@ -20,6 +21,7 @@ def main():
         description="Optimize workflow using TRAILS",
         usage="itrails-optimize <config.yaml> --output OUTPUT_PATH | itrails-optimize example --output OUTPUT_PATH",
     )
+    parser.add_argument('--version', action='version', version='%(prog)s {version}'.format(version=__version__))
 
     parser.add_argument(
         "config_file",

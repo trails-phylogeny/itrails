@@ -2,6 +2,7 @@ import argparse
 import csv
 import math
 import os
+import sys
 
 import pandas as pd
 
@@ -9,8 +10,9 @@ from itrails.cutpoints import cutpoints_AB, cutpoints_ABC
 from itrails.int_get_trans_emiss import trans_emiss_calc_introgression
 from itrails.ncpu import N_CPU, update_n_cpu
 from itrails.optimizer import post_prob_wrapper
-from itrails.read_data import maf_parser
+from itrails.read_data import maf_parser, parse_coordinates
 from itrails.yaml_helpers import load_config
+from itrails._version import __version__
 
 ## URL of the example MAF file on Zenodo
 # EXAMPLE_MAF_URL = "https://zenodo.org/records/14930374/files/example_alignment.maf"
@@ -20,11 +22,16 @@ def main():
     """Command-line entry point for running posterior decoding."""
     parser = argparse.ArgumentParser(
         description="Run Posterior decoding using iTRAILS",
-        usage="itrails-int-posterior <config.yaml> --input PATH_MAF --output OUTPUT_PATH --PARAMETERS",
+        usage="itrails-int-posterior --config-file CONFIG_FILE --input PATH_MAF --output OUTPUT_PATH --PARAMETERS",
     )
+    parser.add_argument('--version', action='version', version='%(prog)s {version}'.format(version=__version__))
+
+    if len(sys.argv) == 1:
+        parser.print_usage()
+        sys.exit("Error: No arguments provided. Please provide either a config file, command-line parameters, or both.")
 
     parser.add_argument(
-        "config_file",
+        "--config-file",
         type=str,
         required=False,
         help="Path to the YAML config file.",
@@ -66,6 +73,7 @@ def main():
     # Settings arguments
     parser.add_argument("--n_cpu", type=int, help="Number of CPUs to use")
     parser.add_argument("--species_list", nargs="+", help="List of species names")
+    parser.add_argument("--reference", type=str, help="Reference to polarize coordinates")
     parser.add_argument("--n_int_AB", type=int, help="Number of intervals for AB")
     parser.add_argument("--n_int_ABC", type=int, help="Number of intervals for ABC")
     parser.add_argument(
@@ -142,6 +150,8 @@ def main():
         config["settings"]["n_cpu"] = args.n_cpu
     if args.species_list is not None:
         config["settings"]["species_list"] = args.species_list
+    if args.reference is not None:
+        config["settings"]["reference"] = args.reference
     if args.n_int_AB is not None:
         config["settings"]["n_int_AB"] = args.n_int_AB
     if args.n_int_ABC is not None:
@@ -628,6 +638,8 @@ def main():
     maf_alignment = maf_parser(maf_path, species_list)
     if maf_alignment is None:
         raise ValueError("Error reading MAF alignment file.")
+    if settings.get("reference") is not None:
+        ref_coordinates = parse_coordinates(maf_path, species_list, settings.get("reference"))
 
     print("Calculating transition and emission probability matrices.")
     a, b, pi, hidden_names, observed_names = trans_emiss_calc_introgression(
@@ -724,7 +736,10 @@ def main():
 
         for block_idx, arr in enumerate(posterior_results):
             for pos_idx, row in enumerate(arr):
-                writer.writerow([block_idx, pos_idx] + row.tolist())
+                if settings.get("reference") is None:
+                    writer.writerow([block_idx, pos_idx] + row.tolist())
+                else:
+                    writer.writerow([block_idx, ref_coordinates[block_idx][pos_idx]] + row.tolist())
     print(f"Posterior decoding complete. Results saved to {output_file}.")
 
 
