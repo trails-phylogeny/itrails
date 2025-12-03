@@ -1,5 +1,6 @@
 import numpy as np
 
+from itrails.cutpoints import cutpoints_AB, cutpoints_ABC
 from itrails.get_emission_prob_mat import get_emission_prob_mat
 from itrails.get_joint_prob_mat import get_joint_prob_mat
 
@@ -16,8 +17,8 @@ def trans_emiss_calc(
     r,
     n_int_AB,
     n_int_ABC,
-    cut_AB="standard",
-    cut_ABC="standard",
+    cut_AB,
+    cut_ABC,
 ):
     """
     Calculate the emission and transition probabilities given a set of parameters.
@@ -44,10 +45,10 @@ def trans_emiss_calc(
     :type n_int_AB: int
     :param n_int_ABC: Number of discretized time intervals in deep coalescent
     :type n_int_ABC: int
-    :param cut_AB: Option for handling cutoffs between speciation events for species A and B. Default is "standard".
-    :type cut_AB: str
-    :param cut_ABC: Option for handling cutoffs in deep coalescence for species A, B, and C. Default is "standard".
-    :type cut_ABC: str
+    :param cut_AB: Cutpoints in the A-B process.
+    :type cut_AB: Array-like
+    :param cut_ABC: Cutpoints in the A-B-C process.
+    :type cut_ABC: Array-like
 
     :return: A tuple containing:
              - **a**: Transition probability matrix.
@@ -87,6 +88,13 @@ def trans_emiss_calc(
     mu_AB = N_ref * (4 / 3)
     mu_ABC = N_ref * (4 / 3)
 
+    if isinstance(cut_AB, str):
+        if cut_AB == "standard":
+            cut_AB = cutpoints_AB(n_int_AB, t_AB, coal_AB)
+    if isinstance(cut_ABC, str):
+        if cut_ABC == "standard":
+            cut_ABC = cutpoints_ABC(n_int_ABC, coal_ABC)
+
     tr_dict = get_joint_prob_mat(
         t_A,
         t_B,
@@ -107,33 +115,7 @@ def trans_emiss_calc(
         cut_AB,
         cut_ABC,
     )
-    # Convert dictionary to DataFrame
 
-    # Get all unique states
-    unique_states = sorted(set(state for pair in tr_dict.keys() for state in pair))
-
-    # Create mapping from states to indices
-    state_to_index = {state: i for i, state in enumerate(unique_states)}
-    # index_to_state = {i: state for state, i in state_to_index.items()}  # Reverse mapping
-    hidden_names = {
-        i: state for i, state in enumerate(unique_states)
-    }  # Equivalent to index_to_state
-    # Initialize an empty transition matrix
-    n_states = len(unique_states)
-    transition_matrix = np.zeros((n_states, n_states))
-
-    # Fill the matrix with probabilities
-    for (from_state, to_state), prob in tr_dict.items():
-        from_idx = state_to_index[from_state]
-        to_idx = state_to_index[to_state]
-        transition_matrix[from_idx, to_idx] = prob
-
-    pi = transition_matrix.sum(axis=1)
-
-    # Avoid division by zero
-    a = np.divide(transition_matrix, pi, where=pi != 0)
-
-    # Get emissions using the modified function (which now returns lists)
     hidden_states, emission_dicts = get_emission_prob_mat(
         t_A,
         t_B,
@@ -162,14 +144,27 @@ def trans_emiss_calc(
         cut_AB,
         cut_ABC,
     )
-    # Sort emissions by hidden state (assuming hidden_states can be compared)
-    sorted_data = sorted(zip(hidden_states, emission_dicts), key=lambda x: x[0])
-    sorted_states, sorted_emissions = zip(*sorted_data)
-    hidden_names = {i: state for i, state in enumerate(sorted_states)}
-    # Assume all emission dictionaries have the same keys.
-    observed_keys = sorted(list(sorted_emissions[0].keys()))
-    observed_names = {i: key for i, key in enumerate(observed_keys)}
-    # Build emission matrix 'b': each row corresponds to a hidden state and columns follow the order in observed_keys.
-    b = np.array([[em[key] for key in observed_keys] for em in sorted_emissions])
 
-    return a, b, pi, hidden_names, observed_names
+    observed_keys = list(emission_dicts[0].keys())
+    b = np.array([[em[key] for key in observed_keys] for em in emission_dicts])
+    sorted_indices = sorted(range(len(hidden_states)), key=lambda i: hidden_states[i])
+    hidden_list_sorted = [hidden_states[i] for i in sorted_indices]
+    emission_array_sorted = b[sorted_indices]
+    sorted_hidden_dict = dict(enumerate(hidden_list_sorted))
+    observed_names = {i: key for i, key in enumerate(observed_keys)}
+
+    state_to_index = {v: k for k, v in sorted_hidden_dict.items()}
+    n_states = len(hidden_states)
+
+    transition_matrix = np.zeros((n_states, n_states))
+
+    for (from_state, to_state), prob in tr_dict.items():
+        i = state_to_index[from_state]
+        j = state_to_index[to_state]
+        transition_matrix[i, j] = prob
+
+    pi = transition_matrix.sum(axis=1)
+
+    a = transition_matrix / pi[:, None]
+
+    return a, emission_array_sorted, pi, sorted_hidden_dict, observed_names

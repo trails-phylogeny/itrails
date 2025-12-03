@@ -1,21 +1,28 @@
 # Example configuration for itrails-optimize
 fixed_parameters:
-  mu: 1e-8
+  mu: 2e-8
 
 optimized_parameters: # [starting, min, max]
   N_AB: [50000, 5000, 500000]
+  N_BC: [30000, 3000, 300000]
   N_ABC: [50000, 5000, 500000]
   t_1: [240000, 24000, 2400000]
   t_2: [40000, 4000, 400000]
   t_3: [800000, 80000, 8000000]
   t_upper: [745069.3855, 74506.9385, 7450693.8556]
   r: [1e-8, 1e-9, 1e-7]
+  t_m: [100000, 10000, 1000000]
+  m: [0.1, 0.01, 1]
+  N_BC: [30000, 3000, 300000]
+  t_m: [120000, 12000, 1200000]
+  m: [0.1, 0.01, 1]
 
 settings:
-  input_maf: # Path to the MAF alignment file.
-  output_prefix: # Path/prefix to the output directory.
+  input_maf: /home/dmartinpestana/genint2_develop/TRAILS/outfiles
+  output_prefix: /home/dmartinpestana/genint2_develop/TRAILS/outfiles
   n_cpu: 64
   method: "Nelder-Mead"
   species_list: ["hg38", "panTro5", "gorGor5", "ponAbe2"]
   n_int_AB: 3
   n_int_ABC: 3
+  proportional: False
