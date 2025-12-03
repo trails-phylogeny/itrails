@@ -3,6 +3,7 @@ import os
 import time
 
 import numpy as np
+import pandas as pd
 from joblib import Parallel, delayed
 from numba import njit
 from numba.typed import List
@@ -10,7 +11,7 @@ from scipy.optimize import minimize
 
 import itrails.ncpu as ncpu
 from itrails.cutpoints import cutpoints_ABC
-from itrails.get_trans_emiss import trans_emiss_calc
+from itrails.int_get_trans_emiss import trans_emiss_calc_introgression
 from itrails.read_data import (
     get_idx_state,
     get_idx_state_new_method,
@@ -393,36 +394,20 @@ def write_list(lst, res_name):
         f.write("\n")
 
 
-def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, info):
-    """Objective function for the optimizer that updates a copy of the fixed parameter dictionary with the current optimized values from arg_lst, computes additional derived parameters based on the specified case (which determines how time parameters are combined), calculates the transition probability, emission, and initial state probability matrices via trans_emiss_calc, evaluates the log-likelihood for the observed data V_lst using either a parallel or sequential log-likelihood wrapper depending on available CPUs, logs the evaluation to an optimization history CSV file, updates the best model if the current log-likelihood improves upon the previous best, increments the evaluation count, and returns the negative log-likelihood value (to be minimized).
-
-    :param arg_lst: Array of parameter values to be optimized that will update the fixed parameter dictionary.
-    :type arg_lst: numpy array.
-    :param optimized_params: List of parameter names (keys in d) that are subject to optimization. :type optimized_params: list[str].
-    :param case: A frozenset specifying the combination of time parameters provided (e.g., frozenset(["t_A", "t_B", "t_C"]) or frozenset(["t_1", "t_A"]), etc.). :type case: frozenset.
-    :param d: Dictionary of fixed parameter values.
-    :type d: dict.
-    :param V_lst: List of observed state arrays, where each array is a numpy array of integer indices representing observed states.
-    :type V_lst: list[np.ndarray].
-    :param res_name: Directory path where result files (e.g., best_model.yaml and optimization_history.csv) will be saved.
-    :type res_name: str.
-    :param info: Dictionary containing optimization metadata, including "Nfeval" (the number of evaluations so far) and "time" (the start time of the optimization run).
-    :type info: dict.
-    :return: Negative log-likelihood value (to be minimized by the optimizer).
-    :rtype: float."""
+def optimization_wrapper_introgression(
+    arg_lst, optimized_params, case, d, V_lst, res_name, info
+):
     output_dir, output_prefix = os.path.split(res_name)
-    best_model_yaml = os.path.join(output_dir, f"{output_prefix}.best_model.yaml")
+    best_model_yaml = os.path.join(output_dir, f"{output_prefix}_best_model.yaml")
     d_copy = d.copy()
-
     for i, param in enumerate(optimized_params):
         d_copy[param] = arg_lst[i]
     cut_ABC = cutpoints_ABC(d_copy["n_int_ABC"], 1)
     if case == frozenset(["t_A", "t_B", "t_C"]):
-
         t_out = (
             (
-                (((d_copy["t_A"] + d_copy["t_B"]) / 2 + d_copy["t_2"]) + d_copy["t_C"])
-                / 2
+                ((d_copy["t_A"] + (d_copy["t_B"] + d_copy["t_m"])) / 2 + d_copy["t_2"])
+                + (d_copy["t_C"] + d_copy["t_m"] + d_copy["t_2"]) / 2
                 + cut_ABC[d_copy["n_int_ABC"] - 1] * d_copy["N_ABC"]
                 + d_copy["t_upper"]
                 + 2 * d_copy["N_ABC"]
@@ -433,8 +418,7 @@ def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, in
         d_copy["t_out"] = t_out
 
     elif case == frozenset(["t_1", "t_A"]):
-        t_B = d_copy["t_1"]
-        t_C = d_copy["t_1"] + d_copy["t_2"]
+        t_B = t_C = d_copy["t_1"] - d_copy["t_m"]
         t_out = (
             d_copy["t_1"]
             + d_copy["t_2"]
@@ -450,7 +434,7 @@ def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, in
         d_copy.pop("t_1")
     elif case == frozenset(["t_1", "t_B"]):
         t_A = d_copy["t_1"]
-        t_C = d_copy["t_1"] + d_copy["t_2"]
+        t_C = d_copy["t_1"] - d_copy["t_m"]
         t_out = (
             d_copy["t_1"]
             + d_copy["t_2"]
@@ -466,7 +450,7 @@ def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, in
         d_copy.pop("t_1")
     elif case == frozenset(["t_1", "t_C"]):
         t_A = d_copy["t_1"]
-        t_B = d_copy["t_1"]
+        t_B = d_copy["t_1"] - d_copy["t_m"]
         t_out = (
             d_copy["t_1"]
             + d_copy["t_2"]
@@ -481,10 +465,11 @@ def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, in
         d_copy["t_out"] = t_out
         d_copy.pop("t_1")
     elif case == frozenset(["t_A", "t_B"]):
-        t_C = (d_copy["t_A"] + d_copy["t_B"]) / 2 + d_copy["t_2"]
+        t_C = (d_copy["t_B"] + d_copy["t_A"] + d_copy["t_m"]) / 2
         t_out = (
             (
-                (((d_copy["t_A"] + d_copy["t_B"]) / 2 + d_copy["t_2"]) + t_C) / 2
+                ((d_copy["t_A"] + (d_copy["t_B"] + d_copy["t_m"])) / 2 + d_copy["t_2"])
+                + (t_C + d_copy["t_m"] + d_copy["t_2"]) / 2
                 + cut_ABC[d_copy["n_int_ABC"] - 1] * d_copy["N_ABC"]
                 + d_copy["t_upper"]
                 + 2 * d_copy["N_ABC"]
@@ -495,10 +480,11 @@ def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, in
         d_copy["t_C"] = t_C
         d_copy["t_out"] = t_out
     elif case == frozenset(["t_A", "t_C"]):
-        t_B = (d_copy["t_A"] + d_copy["t_C"] - d_copy["t_2"]) / 2
+        t_B = (d_copy["t_C"] + d_copy["t_A"] + d_copy["t_m"]) / 2
         t_out = (
             (
-                (((d_copy["t_A"] + t_B) / 2 + d_copy["t_2"]) + d_copy["t_C"]) / 2
+                ((d_copy["t_A"] + (t_B + d_copy["t_m"])) / 2 + d_copy["t_2"])
+                + (d_copy["t_C"] + d_copy["t_m"] + d_copy["t_2"]) / 2
                 + cut_ABC[d_copy["n_int_ABC"] - 1] * d_copy["N_ABC"]
                 + d_copy["t_upper"]
                 + 2 * d_copy["N_ABC"]
@@ -509,10 +495,11 @@ def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, in
         d_copy["t_B"] = t_B
         d_copy["t_out"] = t_out
     elif case == frozenset(["t_B", "t_C"]):
-        t_A = (d_copy["t_B"] + d_copy["t_C"] - d_copy["t_2"]) / 2
+        t_A = (d_copy["t_C"] + d_copy["t_B"] + d_copy["t_m"]) / 2
         t_out = (
             (
-                (((t_A + d_copy["t_B"]) / 2 + d_copy["t_2"]) + d_copy["t_C"]) / 2
+                ((t_A + (d_copy["t_B"] + d_copy["t_m"])) / 2 + d_copy["t_2"])
+                + (d_copy["t_C"] + d_copy["t_m"] + d_copy["t_2"]) / 2
                 + cut_ABC[d_copy["n_int_ABC"] - 1] * d_copy["N_ABC"]
                 + d_copy["t_upper"]
                 + 2 * d_copy["N_ABC"]
@@ -523,8 +510,8 @@ def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, in
         d_copy["t_A"] = t_A
         d_copy["t_out"] = t_out
     elif case == frozenset(["t_1"]):
-        t_A = t_B = d_copy["t_1"]
-        t_C = d_copy["t_1"] + d_copy["t_2"]
+        t_A = d_copy["t_1"]
+        t_C = t_B = d_copy["t_1"] - d_copy["t_m"]
         t_out = (
             d_copy["t_1"]
             + d_copy["t_2"]
@@ -540,27 +527,43 @@ def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, in
         d_copy["t_out"] = t_out
         d_copy.pop("t_1")
 
-    a, b, pi, hidden_names, observed_names = trans_emiss_calc(
+    # Calculate transition and emission probabilities
+    a, b, pi, hidden_names, observed_names = trans_emiss_calc_introgression(
         d_copy["t_A"],
         d_copy["t_B"],
         d_copy["t_C"],
         d_copy["t_2"],
         d_copy["t_upper"],
         d_copy["t_out"],
+        d_copy["t_m"],
         d_copy["N_AB"],
+        d_copy["N_BC"],
         d_copy["N_ABC"],
         d_copy["r"],
+        d_copy["m"],
         d_copy["n_int_AB"],
         d_copy["n_int_ABC"],
         "standard",
         "standard",
+        info["tmp_path"],
     )
-
+    # Save indices for hidden and observed states
+    if info["Nfeval"] == 0:
+        pd.DataFrame(
+            {"idx": list(hidden_names.keys()), "hidden": list(hidden_names.values())}
+        ).to_csv("hidden_states.csv", index=False)
+        pd.DataFrame(
+            {
+                "idx": list(observed_names.keys()),
+                "observed": list(observed_names.values()),
+            }
+        ).to_csv("observed_states.csv", index=False)
+    # Calculate log-likelihood
     try:
         ncpus = int(os.environ["SLURM_JOB_CPUS_PER_NODE"])
     except KeyError:
         ncpus = mp.cpu_count()
-
+    # Calculate log-likelihood
     if len(V_lst) >= ncpus:
         loglik = loglik_wrapper_par(a, b, pi, V_lst)
     else:
@@ -568,7 +571,7 @@ def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, in
 
     write_list(
         [info["Nfeval"]] + arg_lst.tolist() + [loglik, time.time() - info["time"]],
-        os.path.join(output_dir, f"{output_prefix}.optimization_history.csv"),
+        os.path.join(output_dir, f"{output_prefix}_optimization_history.csv"),
     )
 
     update_best_model(
@@ -583,7 +586,7 @@ def optimization_wrapper(arg_lst, optimized_params, case, d, V_lst, res_name, in
     return -loglik
 
 
-def optimizer(
+def optimizer_introgression(
     optim_variables,
     optim_list,
     bounds,
@@ -593,24 +596,35 @@ def optimizer(
     case,
     method="Nelder-Mead",
     header=True,
+    tmp_path="./",
 ):
     """
     Optimization function.
 
-    :param optim_params: Dictionary containing the initial values for the parameters to be optimized, and their optimization bounds. The structure of the dictionary should be as follows: ``dct['variable'] = [initial_value, lower_bound, upper_bound]``. The dictionary must contain either 6 entries (``t_1, t_2, t_upper, N_AB, N_ABC, r``) or 9 entries (``t_A, t_B, t_C, t_2, t_upper, t_out, N_AB, N_ABC, r``) in that specific order.
-    :type optim_params: dict
-    :param fixed_params: Dictionary containing the values for the fixed parameters. The dictionary must include the entries ``n_int_AB`` and ``n_int_ABC`` (in no particular order).
-    :type fixed_params: dict
-    :param V_lst: List of numpy arrays of integers corresponding to the observed states.
-    :type V_lst: list
-    :param res_name: File path and name where the results should be saved (in CSV format).
-    :type res_name: str
-    :return: None. This function updates the results on each iteration of the minimizer.
-    :rtype: None
+    Parameters
+    ----------
+    optim_params : dictionary
+        Dictionary containing the initial values for the
+        parameters to be optimized, and their optimization
+        bounds. The structure of the dictionary should be
+        as follows:
+            dct['variable'] = [initial_value, lower_bound, upper_bound]
+        The dictionary must contain either 8 (t_1, t_2, t_upper, t_m, N_AB, N_ABC, r, m),
+        10 (t_A, t_B, t_C, t_2, t_upper, t_m, N_AB, N_ABC, r, m),
+        or 11 (t_A, t_B, t_C, t_2, t_upper, t_out, t_m, N_AB, N_ABC, r, m) entries,
+        in that specific order.
+    fixed params : dictionary
+        Dictionary containing the values for the fixed parameters.
+        The dictionary must contain entries n_int_AB and n_int_ABC (in no particular order).
+    V_lst : list of numpy arrays
+        List of arrays of integers corresponding to the the observed states.
+    res_name : str
+        Location and name of the gile where the results should be
+        saved (in csv format).
     """
     output_dir, output_prefix = os.path.split(res_name)
     optimization_history = os.path.join(
-        output_dir, f"{output_prefix}.optimization_history.csv"
+        output_dir, f"{output_prefix}_optimization_history.csv"
     )
     if header:
         write_list(
@@ -621,7 +635,7 @@ def optimizer(
 
     d_copy = fixed_params.copy()
     res = minimize(
-        optimization_wrapper,
+        optimization_wrapper_introgression,
         x0=optim_list,
         args=(
             optim_variables,
@@ -629,7 +643,7 @@ def optimizer(
             d_copy,
             V_lst,
             res_name,
-            {"Nfeval": 0, "time": time.time()},
+            {"Nfeval": 0, "time": time.time(), "tmp_path": tmp_path},
         ),
         method=method,
         bounds=bounds,

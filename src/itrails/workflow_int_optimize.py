@@ -5,8 +5,8 @@ from math import inf
 import yaml
 
 from itrails.cutpoints import cutpoints_ABC
+from itrails.int_optimizer import optimizer_introgression
 from itrails.ncpu import N_CPU, update_n_cpu
-from itrails.optimizer import optimizer
 from itrails.read_data import maf_parser
 from itrails.yaml_helpers import FlowSeq, load_config
 from itrails._version import __version__
@@ -18,8 +18,8 @@ from itrails._version import __version__
 def main():
     """Command-line entry point for running the optimizer."""
     parser = argparse.ArgumentParser(
-        description="Optimize workflow using TRAILS",
-        usage="itrails-optimize <config.yaml> --output OUTPUT_PATH | itrails-optimize example --output OUTPUT_PATH",
+        description="Optimize workflow with introgression using TRAILS",
+        usage="itrails-optimize <config.yaml> --input PATH_TO_MAF --output OUTPUT_PATH",
     )
     parser.add_argument('--version', action='version', version='%(prog)s {version}'.format(version=__version__))
 
@@ -103,9 +103,16 @@ def main():
         # If not specified, we leave N_CPU as the default
         print(f"No CPU count specified in config; using default {N_CPU} cores.")
 
+    proportional_tm = config["settings"].get("proportional")
+    if proportional_tm:
+        raise ValueError(
+            "Proportional t_m is currently not supported in the optimization workflow. Please provide t_m as an absolute value in generations."
+        )
+
     # Extract fixed parameters
     fixed_params = config["fixed_parameters"]
     optimized_params = config["optimized_parameters"]
+
     settings = config["settings"]
     settings["output_prefix"] = user_output
     settings["input_maf"] = maf_path
@@ -221,7 +228,7 @@ def main():
     case = frozenset(found_values)
 
     # Sets t_2, N_ABC, N_AB and r
-    params = ["t_2", "N_ABC", "N_AB", "r"]
+    params = ["t_2", "N_ABC", "N_AB", "N_BC", "r", "t_m", "m"]
     for param in params:
         if param in fixed_params and param in optimized_params:
             raise ValueError(f"Parameter '{param}' cannot be both fixed and optimized.")
@@ -233,7 +240,7 @@ def main():
             bounds_list.append((optimized_params[param][1], optimized_params[param][2]))
         else:
             raise ValueError(
-                "Parameters 't_2', 'N_ABC', 'N_AB' and 'r' must be present in optimized or fixed parameters."
+                "Parameters 't_2', 'N_ABC', 'N_AB', 'N_BC', 't_m', 'm' and 'r' must be present in optimized or fixed parameters."
             )
 
     # Sets t_upper
@@ -269,10 +276,6 @@ def main():
                         f"the minimum ({lower_t_upper}) and maximum ({upper_t_upper})."
                     )
                 t_upper = [t_upper_starting, lower_t_upper, upper_t_upper]
-                if t_upper[0] < 0 or t_upper[1] < 0 or t_upper[2] < 0:
-                    raise ValueError(
-                        "Calculated 't_upper' values cannot be negative. Please check your input parameters."
-                    )
                 optim_variables.append("t_upper")
                 optim_list.append(t_upper_starting)
                 bounds_list.append((lower_t_upper, upper_t_upper))
@@ -294,10 +297,6 @@ def main():
                         f"the minimum ({lower_t_upper}) and maximum ({upper_t_upper})."
                     )
                 t_upper = [t_upper_starting, lower_t_upper, upper_t_upper]
-                if t_upper[0] < 0 or t_upper[1] < 0 or t_upper[2] < 0:
-                    raise ValueError(
-                        "Calculated 't_upper' values cannot be negative. Please check your input parameters."
-                    )
                 optim_variables.append("t_upper")
                 optim_list.append(t_upper_starting)
                 bounds_list.append((lower_t_upper, upper_t_upper))
@@ -327,10 +326,6 @@ def main():
                         f"the minimum ({lower_t_upper}) and maximum ({upper_t_upper})."
                     )
                 t_upper = [t_upper_starting, lower_t_upper, upper_t_upper]
-                if t_upper[0] < 0 or t_upper[1] < 0 or t_upper[2] < 0:
-                    raise ValueError(
-                        "Calculated 't_upper' values cannot be negative. Please check your input parameters."
-                    )
                 optim_variables.append("t_upper")
                 optim_list.append(t_upper)
                 bounds_list.append((lower_t_upper, upper_t_upper))
@@ -348,18 +343,8 @@ def main():
         bounds_list.append(
             (optimized_params["t_upper"][1], optimized_params["t_upper"][2])
         )
-
-        if optim_list[-1] < 0 or bounds_list[-1][0] < 0 or bounds_list[-1][1] < 0:
-            raise ValueError(
-                "Parameter 't_upper' cannot be negative. Please check your input parameters."
-            )
-
     elif "t_upper" in fixed_params:
         fixed_dict["t_upper"] = fixed_params["t_upper"]
-        if fixed_dict["t_upper"] < 0:
-            raise ValueError(
-                "Parameter 't_upper' cannot be negative. Please check your input parameters."
-            )
 
     # Sets t_out
     if "t_out" in fixed_params:
@@ -419,7 +404,7 @@ def main():
     filtered_fixed_dict["mu"] = mu
 
     starting_params_yaml = os.path.join(
-        output_dir, f"{output_prefix}.starting_params.yaml"
+        output_dir, f"{output_prefix}_starting_params.yaml"
     )
 
     def adjust_value(value, param, mu):
@@ -457,7 +442,7 @@ def main():
     with open(starting_params_yaml, "w") as f:
         yaml.dump(starting_params, f, default_flow_style=False)
 
-    best_model_yaml = os.path.join(output_dir, f"{output_prefix}.best_model.yaml")
+    best_model_yaml = os.path.join(output_dir, f"{output_prefix}_best_model.yaml")
     starting_best_model = {
         "fixed_parameters": filtered_fixed_dict,
         "optimized_parameters": {},
@@ -472,7 +457,7 @@ def main():
         raise ValueError("Error reading MAF alignment file.")
 
     print("Running optimization...")
-    optimizer(
+    optimizer_introgression(
         optim_variables=optim_variables,
         optim_list=optim_list,
         bounds=bounds_list,
@@ -486,7 +471,7 @@ def main():
 
     print(
         f"Optimization complete. Results saved to {
-            os.path.join(output_dir, f'{output_prefix}.optimization_history.csv')
+            os.path.join(output_dir, f'{output_prefix}_optimization_history.csv')
         }.\n Best model saved to {best_model_yaml}."
     )
 

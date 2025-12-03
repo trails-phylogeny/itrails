@@ -4,10 +4,12 @@ import math
 import os
 import sys
 
+import pandas as pd
+
 from itrails.cutpoints import cutpoints_AB, cutpoints_ABC
-from itrails.get_trans_emiss import trans_emiss_calc
+from itrails.int_get_trans_emiss import trans_emiss_calc_introgression
 from itrails.ncpu import N_CPU, update_n_cpu
-from itrails.optimizer import viterbi_wrapper
+from itrails.optimizer import post_prob_wrapper
 from itrails.read_data import maf_parser, parse_coordinates
 from itrails.yaml_helpers import load_config
 from itrails._version import __version__
@@ -17,12 +19,13 @@ from itrails._version import __version__
 
 
 def main():
-    """Command-line entry point for running viterbi decoding."""
+    """Command-line entry point for running posterior decoding."""
     parser = argparse.ArgumentParser(
-        description="Run Viterbi decoding using iTRAILS",
-        usage="itrails-viterbi --config-file CONFIG_FILE --input PATH_MAF --output OUTPUT_PATH --PARAMETERS",
+        description="Run Posterior decoding using iTRAILS",
+        usage="itrails-int-posterior --config-file CONFIG_FILE --input PATH_MAF --output OUTPUT_PATH --PARAMETERS",
     )
     parser.add_argument('--version', action='version', version='%(prog)s {version}'.format(version=__version__))
+
     if len(sys.argv) == 1:
         parser.print_usage()
         sys.exit("Error: No arguments provided. Please provide either a config file, command-line parameters, or both.")
@@ -57,12 +60,15 @@ def main():
     parser.add_argument(
         "--t2", type=float, help="Time between first and second speciation"
     )
+    parser.add_argument("--t_m", type=float, help="Time parameter t_m")
     parser.add_argument("--t3", type=float, help="Time parameter t_3")
     parser.add_argument("--t_upper", type=float, help="Upper time parameter")
     parser.add_argument("--t_out", type=float, help="Outgroup time parameter")
     parser.add_argument("--N_AB", type=float, help="Effective population size for AB")
     parser.add_argument("--N_ABC", type=float, help="Effective population size for ABC")
+    parser.add_argument("--N_BC", type=float, help="Effective population size for BC")
     parser.add_argument("--r", type=float, help="Recombination rate")
+    parser.add_argument("--m", type=float, help="Migration rate between species")
 
     # Settings arguments
     parser.add_argument("--n_cpu", type=int, help="Number of CPUs to use")
@@ -104,6 +110,7 @@ def main():
     # Handle time parameters - these can be in either fixed or optimized
     time_params = {
         "t_1": args.t1,
+        "t_m": args.t_m,
         "t_A": args.t_A,
         "t_B": args.t_B,
         "t_C": args.t_C,
@@ -126,6 +133,8 @@ def main():
         "N_AB": args.N_AB,
         "N_ABC": args.N_ABC,
         "r": args.r,
+        "N_BC": args.N_BC,
+        "m": args.m,
     }
 
     for param, value in other_params.items():
@@ -198,7 +207,7 @@ def main():
     output_dir, output_prefix = os.path.split(user_output)
     os.makedirs(output_dir, exist_ok=True)
 
-    print(f"Results will be saved to: {output_dir} as '{output_prefix}.viterbi.csv'.")
+    print(f"Results will be saved to: {output_dir} as '{output_prefix}.posterior.csv'.")
 
     requested_cores = config["settings"].get("n_cpu")
     if requested_cores is not None:
@@ -210,6 +219,7 @@ def main():
     cut_ABC = config["settings"].get("cutpoints_ABC")
     n_int_AB = config["settings"].get("n_int_AB")
     n_int_ABC = config["settings"].get("n_int_ABC")
+    proportional_tm = config["settings"].get("proportional")
 
     if not n_int_AB and not cut_AB:
         raise ValueError(
@@ -248,7 +258,7 @@ def main():
     optim_variables = []
     optim_list = []
 
-    params = ["t_2", "N_ABC", "N_AB", "r"]
+    params = ["t_2", "N_ABC", "N_AB", "N_BC", "r", "t_m", "m"]
     for param in params:
         if param in fixed_params and param in optimized_params:
             raise ValueError(f"Parameter '{param}' cannot be both fixed and optimized.")
@@ -271,7 +281,7 @@ def main():
             optim_list.append(optimized_params[param])
         else:
             raise ValueError(
-                "Parameters 't_2', 'N_ABC', 'N_AB' and 'r' must be present in optimized or fixed parameters."
+                "Parameters 't_2', 'N_ABC', 'N_AB', 'N_BC, 't_m', 'm' and 'r' must be present in optimized or fixed parameters."
             )
 
     def process_parameter(param):
@@ -405,17 +415,32 @@ def main():
         fixed_dict["t_upper"] = fixed_params["t_upper"]
     # Optimized/fixed parameters validation
     for i, param in enumerate(optim_variables):
-        if param in fixed_params:
-            raise ValueError(
-                f"Parameter '{param}' cannot be present in both fixed and optimized parameters."
-            )
-        float_value = float(optim_list[i])
-        if not isinstance(float_value, (int, float)) or float_value <= 0:
-            raise ValueError(f"Value for '{param}' must be a positive number.")
-        if param == "r":
-            optim_list[i] = float_value / float(mu)
+        fixed_dict[param] = optim_list[i]
+
+    if proportional_tm:
+        if case == frozenset(["t_1"]):
+            if fixed_dict["t_m"] > 1:
+                raise ValueError(
+                    "If proportional t_m is wanted, please input t_m as a proportion (between 0 and 1)."
+                )
+            fixed_dict["t_m"] = fixed_dict["t_1"] * fixed_dict["t_m"]
         else:
-            optim_list[i] = float_value * float(mu)
+            raise ValueError(
+                "Proportional t_m is only supported for the case where only 't_1' is given, please input t_m as an absolute value (in generations) if you also input 't_A', 't_B' or 't_C'."
+            )
+
+    # for i, param in enumerate(optim_variables):
+    #    if param in fixed_params:
+    #        raise ValueError(
+    #            f"Parameter '{param}' cannot be present in both fixed and optimized parameters."
+    #        )
+    #    float_value = float(optim_list[i])
+    #    if not isinstance(float_value, (int, float)) or float_value <= 0:
+    #        raise ValueError(f"Value for '{param}' must be a positive number.")
+    #    if param == "r":
+    #        optim_list[i] = float_value / float(mu)
+    #    else:
+    #        optim_list[i] = float_value * float(mu)
 
     for param, values in fixed_dict.items():
         if param != "n_int_AB" and param != "n_int_ABC":
@@ -424,8 +449,8 @@ def main():
             else:
                 fixed_dict[param] = float(values) * float(mu)
 
-    for i, param in enumerate(optim_variables):
-        fixed_dict[param] = optim_list[i]
+    # for i, param in enumerate(optim_variables):
+    #    fixed_dict[param] = optim_list[i]
     if fixed_dict["t_upper"] < 0:
         raise ValueError(
             "Parameter 't_upper' must be a positive number. "
@@ -435,10 +460,10 @@ def main():
         t_out = (
             (
                 (
-                    ((fixed_dict["t_A"] + fixed_dict["t_B"]) / 2 + fixed_dict["t_2"])
-                    + fixed_dict["t_C"]
+                    (fixed_dict["t_A"] + (fixed_dict["t_B"] + fixed_dict["t_m"])) / 2
+                    + fixed_dict["t_2"]
                 )
-                / 2
+                + (fixed_dict["t_C"] + fixed_dict["t_m"] + fixed_dict["t_2"]) / 2
                 + norm_cut_ABC[-2] * fixed_dict["N_ABC"]
                 + fixed_dict["t_upper"]
                 + 2 * fixed_dict["N_ABC"]
@@ -449,8 +474,7 @@ def main():
         fixed_dict["t_out"] = t_out
 
     elif case == frozenset(["t_1", "t_A"]):
-        t_B = fixed_dict["t_1"]
-        t_C = fixed_dict["t_1"] + fixed_dict["t_2"]
+        t_B = t_C = fixed_dict["t_1"] - fixed_dict["t_m"]
         t_out = (
             fixed_dict["t_1"]
             + fixed_dict["t_2"]
@@ -466,7 +490,7 @@ def main():
         fixed_dict.pop("t_1")
     elif case == frozenset(["t_1", "t_B"]):
         t_A = fixed_dict["t_1"]
-        t_C = fixed_dict["t_1"] + fixed_dict["t_2"]
+        t_C = fixed_dict["t_1"] - fixed_dict["t_m"]
         t_out = (
             fixed_dict["t_1"]
             + fixed_dict["t_2"]
@@ -482,7 +506,7 @@ def main():
         fixed_dict.pop("t_1")
     elif case == frozenset(["t_1", "t_C"]):
         t_A = fixed_dict["t_1"]
-        t_B = fixed_dict["t_1"]
+        t_B = fixed_dict["t_1"] - fixed_dict["t_m"]
         t_out = (
             fixed_dict["t_1"]
             + fixed_dict["t_2"]
@@ -497,14 +521,14 @@ def main():
         fixed_dict["t_out"] = t_out
         fixed_dict.pop("t_1")
     elif case == frozenset(["t_A", "t_B"]):
-        t_C = (fixed_dict["t_A"] + fixed_dict["t_B"]) / 2 + fixed_dict["t_2"]
+        t_C = (fixed_dict["t_B"] + fixed_dict["t_A"] + fixed_dict["t_m"]) / 2
         t_out = (
             (
                 (
-                    ((fixed_dict["t_A"] + fixed_dict["t_B"]) / 2 + fixed_dict["t_2"])
-                    + t_C
+                    (fixed_dict["t_A"] + (fixed_dict["t_B"] + fixed_dict["t_m"])) / 2
+                    + fixed_dict["t_2"]
                 )
-                / 2
+                + (t_C + fixed_dict["t_m"] + fixed_dict["t_2"]) / 2
                 + norm_cut_ABC[-2] * fixed_dict["N_ABC"]
                 + fixed_dict["t_upper"]
                 + 2 * fixed_dict["N_ABC"]
@@ -515,14 +539,14 @@ def main():
         fixed_dict["t_C"] = t_C
         fixed_dict["t_out"] = t_out
     elif case == frozenset(["t_A", "t_C"]):
-        t_B = (fixed_dict["t_A"] + fixed_dict["t_C"] - fixed_dict["t_2"]) / 2
+        t_B = (fixed_dict["t_C"] + fixed_dict["t_A"] + fixed_dict["t_m"]) / 2
         t_out = (
             (
                 (
-                    ((fixed_dict["t_A"] + t_B) / 2 + fixed_dict["t_2"])
-                    + fixed_dict["t_C"]
+                    (fixed_dict["t_A"] + (t_B + fixed_dict["t_m"])) / 2
+                    + fixed_dict["t_2"]
                 )
-                / 2
+                + (fixed_dict["t_C"] + fixed_dict["t_m"] + fixed_dict["t_2"]) / 2
                 + norm_cut_ABC[-2] * fixed_dict["N_ABC"]
                 + fixed_dict["t_upper"]
                 + 2 * fixed_dict["N_ABC"]
@@ -533,14 +557,14 @@ def main():
         fixed_dict["t_B"] = t_B
         fixed_dict["t_out"] = t_out
     elif case == frozenset(["t_B", "t_C"]):
-        t_A = (fixed_dict["t_B"] + fixed_dict["t_C"] - fixed_dict["t_2"]) / 2
+        t_A = (fixed_dict["t_C"] + fixed_dict["t_B"] + fixed_dict["t_m"]) / 2
         t_out = (
             (
                 (
-                    ((t_A + fixed_dict["t_B"]) / 2 + fixed_dict["t_2"])
-                    + fixed_dict["t_C"]
+                    (t_A + (fixed_dict["t_B"] + fixed_dict["t_m"])) / 2
+                    + fixed_dict["t_2"]
                 )
-                / 2
+                + (fixed_dict["t_C"] + fixed_dict["t_m"] + fixed_dict["t_2"]) / 2
                 + norm_cut_ABC[-2] * fixed_dict["N_ABC"]
                 + fixed_dict["t_upper"]
                 + 2 * fixed_dict["N_ABC"]
@@ -551,8 +575,8 @@ def main():
         fixed_dict["t_A"] = t_A
         fixed_dict["t_out"] = t_out
     elif case == frozenset(["t_1"]):
-        t_A = t_B = fixed_dict["t_1"]
-        t_C = fixed_dict["t_1"] + fixed_dict["t_2"]
+        t_A = fixed_dict["t_1"]
+        t_C = t_B = fixed_dict["t_1"] - fixed_dict["t_m"]
         t_out = (
             fixed_dict["t_1"]
             + fixed_dict["t_2"]
@@ -618,16 +642,19 @@ def main():
         ref_coordinates = parse_coordinates(maf_path, species_list, settings.get("reference"))
 
     print("Calculating transition and emission probability matrices.")
-    a, b, pi, hidden_names, observed_names = trans_emiss_calc(
+    a, b, pi, hidden_names, observed_names = trans_emiss_calc_introgression(
         fixed_dict["t_A"],
         fixed_dict["t_B"],
         fixed_dict["t_C"],
         fixed_dict["t_2"],
         fixed_dict["t_upper"],
         fixed_dict["t_out"],
+        fixed_dict["t_m"],
         fixed_dict["N_AB"],
+        fixed_dict["N_BC"],
         fixed_dict["N_ABC"],
         fixed_dict["r"],
+        fixed_dict["m"],
         fixed_dict["n_int_AB"],
         fixed_dict["n_int_ABC"],
         norm_cut_AB,
@@ -644,106 +671,76 @@ def main():
         1: "((sp1,sp2),sp3)",
         2: "((sp1,sp3),sp2)",
         3: "((sp2,sp3),sp1)",
+        4: "({sp2,sp3},sp1)",
     }
-    with open(hidden_file, "w", newline="") as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(
-            [
-                "state_idx",
-                "topology",
-                "interval_1st_coalescent",
-                "interval_2nd_coalescent",
-                "shorthand_name",
-            ]
+    records = []
+    for state_idx, shorthand in hidden_names.items():
+        key_val, idx1, idx2 = shorthand
+
+        # first‐coalescent interval
+        start1, end1 = (
+            (abs_cut_AB[idx1], abs_cut_AB[idx1 + 1])
+            if key_val == 0
+            else (abs_cut_ABC[idx1], abs_cut_ABC[idx1 + 1])
         )
-        for state_idx, shorthand in hidden_names.items():
-            key_val = shorthand[0]
+        interval_1 = f"{start1:.2f}-{end1:.2f}"
 
-            topology = topology_map.get(key_val, "Unknown")
-            interval_1_0 = (
-                abs_cut_ABC[shorthand[1]] if key_val == 0 else abs_cut_ABC[shorthand[1]]
-            )
-            interval_1_1 = (
-                abs_cut_ABC[shorthand[1] + 1]
-                if key_val == 0
-                else abs_cut_ABC[shorthand[1] + 1]
-            )
-            interval_1_text = f"{interval_1_0:.2f}-{interval_1_1:.2f}"
-            interval_2_0 = abs_cut_ABC[shorthand[2]]
-            interval_2_1 = abs_cut_ABC[shorthand[2] + 1]
-            interval_2_text = f"{interval_2_0:.2f}-{interval_2_1:.2f}"
+        # second‐coalescent always in ABC
+        start2, end2 = (abs_cut_ABC[idx2], abs_cut_ABC[idx2 + 1])
+        interval_2 = f"{start2:.2f}-{end2:.2f}"
 
-            writer.writerow(
-                [
-                    state_idx,
-                    topology,
-                    interval_1_text,
-                    interval_2_text,
-                    shorthand,
-                ]
-            )
+        records.append(
+            {
+                "state_idx": state_idx,
+                "topology": topology_map.get(key_val, "Unknown"),
+                "interval_1st_coalescent": interval_1,
+                "interval_2nd_coalescent": interval_2,
+                "shorthand_name": shorthand,
+            }
+        )
+
+    # --- 4) dump via pandas in one shot ---
+    out_df = pd.DataFrame.from_records(
+        records,
+        columns=[
+            "state_idx",
+            "topology",
+            "interval_1st_coalescent",
+            "interval_2nd_coalescent",
+            "shorthand_name",
+        ],
+    )
+    out_df.to_csv(hidden_file, index=False)
+
     print(f"Hidden states written to file {hidden_file}.")
 
-    print("Running viterbi.")
+    print("Running posterior decoding.")
 
-    viterbi_result = viterbi_wrapper(a=a, b=b, pi=pi, V_lst=maf_alignment)
+    posterior_results = post_prob_wrapper(a=a, b=b, pi=pi, V_lst=maf_alignment)
+
     print("Writing results to file.")
-    output_file = os.path.join(output_dir, f"{output_prefix}.viterbi.csv")
 
+    output_file = os.path.join(output_dir, f"{output_prefix}.posterior.csv")
     with open(output_file, "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(
-            ["Block_idx", "position_start", "position_end", "most_likely_state"]
-        )
-        for block_idx, res in enumerate(viterbi_result):
-            if len(res) == 0:
-                continue
-            if settings.get("reference") is None:
-                segment_start = 0
-                current_state = res[0]
-                for pos in range(1, len(res)):
-                    if res[pos] != current_state:
-                        writer.writerow(
-                            [
-                                block_idx,
-                                segment_start,
-                                pos - 1,
-                                current_state,
-                            ]
-                        )
-                        segment_start = pos
-                        current_state = res[pos]
-                # Write the final segment for this block
-                writer.writerow([block_idx, segment_start, len(res) - 1, current_state])
-            else:
-                first_non_null = next((i for i, x in enumerate(ref_coordinates[block_idx]) if x != -9), None)
-                # If there is a coordinate that is not -9
-                if first_non_null is not None:
-                    segment_start = ref_coordinates[block_idx][first_non_null]
-                    current_non_null = segment_start
-                    current_state = res[first_non_null]
-                    for pos in range(first_non_null, len(res)):
-                        if segment_start == -9:
-                            segment_start = ref_coordinates[block_idx][pos]
-                            current_state = res[pos]
-                            current_non_null = segment_start
-                            continue
-                        if res[pos] != current_state:
-                            writer.writerow(
-                                [
-                                    block_idx,
-                                    segment_start,
-                                    current_non_null,
-                                    current_state,
-                                ]
-                            )
-                            segment_start = ref_coordinates[block_idx][pos]
-                            current_state = res[pos]
-                        current_non_null = ref_coordinates[block_idx][pos] if ref_coordinates[block_idx][pos] != -9 else current_non_null
-                    if not (segment_start == current_non_null == -9):
-                        writer.writerow([block_idx, segment_start, current_non_null, current_state])
 
-    print(f"Viterbi decoding complete. Results saved to {output_file}.")
+        if posterior_results:
+            n_states = posterior_results[0].shape[1]
+        else:
+            n_states = 0
+
+        header = ["alignment_block_idx", "position_idx"] + [
+            f"prob_state_{i}" for i in range(n_states)
+        ]
+        writer.writerow(header)
+
+        for block_idx, arr in enumerate(posterior_results):
+            for pos_idx, row in enumerate(arr):
+                if settings.get("reference") is None:
+                    writer.writerow([block_idx, pos_idx] + row.tolist())
+                else:
+                    writer.writerow([block_idx, ref_coordinates[block_idx][pos_idx]] + row.tolist())
+    print(f"Posterior decoding complete. Results saved to {output_file}.")
 
 
 if __name__ == "__main__":
