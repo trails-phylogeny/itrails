@@ -6,7 +6,7 @@ import sys
 
 from itrails.cutpoints import cutpoints_AB, cutpoints_ABC
 from itrails.get_trans_emiss import trans_emiss_calc
-from itrails.ncpu import N_CPU, update_n_cpu
+from itrails.ncpu import AVAILABLE_CPUS, update_n_cpu
 from itrails.optimizer import post_prob_wrapper
 from itrails.read_data import maf_parser, parse_coordinates
 from itrails.yaml_helpers import load_config
@@ -203,8 +203,9 @@ def main():
 
     requested_cores = config["settings"].get("n_cpu")
     if requested_cores is not None:
-        update_n_cpu(requested_cores)
+        N_CPU = update_n_cpu(requested_cores)
     else:
+        N_CPU = AVAILABLE_CPUS
         print(f"No CPU count specified in config; using default {N_CPU} cores.")
 
     cut_AB = config["settings"].get("cutpoints_AB")

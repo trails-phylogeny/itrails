@@ -5,7 +5,7 @@ from math import inf
 import yaml
 
 from itrails.cutpoints import cutpoints_ABC
-from itrails.ncpu import N_CPU, update_n_cpu
+from itrails.ncpu import AVAILABLE_CPUS, update_n_cpu
 from itrails.optimizer import optimizer
 from itrails.read_data import maf_parser
 from itrails.yaml_helpers import FlowSeq, load_config
@@ -98,8 +98,9 @@ def main():
     # Get user-requested CPU count from the configuration, if present.
     requested_cores = config["settings"].get("n_cpu")
     if requested_cores is not None:
-        update_n_cpu(requested_cores)
+        N_CPU = update_n_cpu(requested_cores)
     else:
+        N_CPU = AVAILABLE_CPUS
         # If not specified, we leave N_CPU as the default
         print(f"No CPU count specified in config; using default {N_CPU} cores.")
 
