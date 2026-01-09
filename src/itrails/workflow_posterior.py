@@ -638,7 +638,7 @@ def main():
     if os.path.exists(hidden_file):
         print(f"Warning: File '{hidden_file}' already exists.")
         hidden_file = os.path.join(output_dir, f"{output_prefix}.hidden_states_2.csv")
-        print("Using an alternative file name: {hidden_file}")
+        print(f"Using an alternative file name: {hidden_file}")
     topology_map = {
         0: "({sp1,sp2},sp3)",
         1: "((sp1,sp2),sp3)",
