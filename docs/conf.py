@@ -36,8 +36,8 @@ clean_version = base_version_match.group(1) if base_version_match else "dev"
 release = clean_version  # full version, cleaned
 version = ".".join(clean_version.split(".")[0:2])  # e.g. "0.1"
 
-html_title = "iTRAILS v2.0.1 documentation"
-html_short_title = "iTRAILS v2.0.1"
+html_title = "iTRAILS v2.0.3 documentation"
+html_short_title = "iTRAILS v2.0.3"
 
 
 # -- General configuration ---------------------------------------------------
