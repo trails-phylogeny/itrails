@@ -6,7 +6,7 @@ import sys
 
 from itrails.cutpoints import cutpoints_AB, cutpoints_ABC
 from itrails.get_trans_emiss import trans_emiss_calc
-from itrails.ncpu import N_CPU, update_n_cpu
+from itrails.ncpu import update_n_cpu
 from itrails.optimizer import viterbi_wrapper
 from itrails.read_data import maf_parser, parse_coordinates
 from itrails.yaml_helpers import load_config
@@ -201,9 +201,8 @@ def main():
     print(f"Results will be saved to: {output_dir} as '{output_prefix}.viterbi.csv'.")
 
     requested_cores = config["settings"].get("n_cpu")
-    if requested_cores is not None:
-        update_n_cpu(requested_cores)
-    else:
+    N_CPU = update_n_cpu(requested_cores)
+    if requested_cores is None:
         print(f"No CPU count specified in config; using default {N_CPU} cores.")
 
     cut_AB = config["settings"].get("cutpoints_AB")
@@ -638,7 +637,7 @@ def main():
     if os.path.exists(hidden_file):
         print(f"Warning: File '{hidden_file}' already exists.")
         hidden_file = os.path.join(output_dir, f"{output_prefix}.hidden_states_2.csv")
-        print("Using an alternative file name: {hidden_file}")
+        print(f"Using an alternative file name: {hidden_file}")
     topology_map = {
         0: "({sp1,sp2},sp3)",
         1: "((sp1,sp2),sp3)",
