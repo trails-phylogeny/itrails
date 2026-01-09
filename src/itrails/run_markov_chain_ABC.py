@@ -36,7 +36,7 @@ def compute_matrix_start_end(
 def compute_matrices_start_end_wrapper(
     prob_mats, exponential_time, omega_start_masks, omega_end_masks, num_combinations
 ):
-    """Parallel wrapper that computes the sliced matrix result for each combination by invoking compute_matrix_start_end on each set of inputs; for every index from 0 to num_combinations-1, it multiplies the corresponding probability matrix (from prob_mats) with the result of slicing the exponential_time matrix using the corresponding omega_start_mask and omega_end_mask, and aggregates all results into a single numpy array; the computations are performed in parallel using joblib.Parallel with ncpu.N_CPU workers.
+    """Parallel wrapper that computes the sliced matrix result for each combination by invoking compute_matrix_start_end on each set of inputs; for every index from 0 to num_combinations-1, it multiplies the corresponding probability matrix (from prob_mats) with the result of slicing the exponential_time matrix using the corresponding omega_start_mask and omega_end_mask, and aggregates all results into a single numpy array; the computations are performed in parallel using joblib.Parallel with ncpu.N_CPU_GLOBAL workers.
     :param prob_mats: List or array of probability matrices where each element is a numpy array.
     :type prob_mats: list or np.ndarray.
     :param exponential_time: Numpy array representing the matrix computed by applying the exponential function to the transition matrix multiplied by time.
@@ -49,7 +49,7 @@ def compute_matrices_start_end_wrapper(
     :type num_combinations: int.
     :return: Numpy array containing the resulting matrices computed for each combination.
     :rtype: np.ndarray."""
-    results = Parallel(n_jobs=ncpu.N_CPU)(
+    results = Parallel(n_jobs=ncpu.N_CPU_GLOBAL)(
         delayed(compute_matrix_start_end)(
             prob_mats[i], exponential_time, omega_start_masks[i], omega_end_masks[i]
         )
@@ -126,7 +126,7 @@ def vanloan_parallel_inner(
     vl_omega_masks_end,
     vl_prob_mats,
 ):
-    """Parallel wrapper that schedules vanloan_worker_inner tasks to compute the Van Loan integral for every combination of subpaths when multiple coalescents occur in the same time interval; it first serializes the provided omega dictionary, then builds a list of tasks from the accumulated keys, paths, omega masks, and probability matrices arrays, executes these tasks in parallel using ncpu.N_CPU workers, and finally aggregates and flattens the results into arrays of updated keys and computed probability matrices along with the total number of valid tasks processed.
+    """Parallel wrapper that schedules vanloan_worker_inner tasks to compute the Van Loan integral for every combination of subpaths when multiple coalescents occur in the same time interval; it first serializes the provided omega dictionary, then builds a list of tasks from the accumulated keys, paths, omega masks, and probability matrices arrays, executes these tasks in parallel using ncpu.N_CPU_GLOBAL workers, and finally aggregates and flattens the results into arrays of updated keys and computed probability matrices along with the total number of valid tasks processed.
     :param vl_idx: number of indices in the vanloan keys accumulator array.
     :type vl_idx: int.
     :param time: end time of the current time interval used in the Van Loan integral computation.
@@ -179,7 +179,7 @@ def vanloan_parallel_inner(
             )
 
     # Run tasks in parallel
-    results = Parallel(n_jobs=ncpu.N_CPU)(
+    results = Parallel(n_jobs=ncpu.N_CPU_GLOBAL)(
         delayed(vanloan_worker_inner)(*args) for args in tasks
     )
 
@@ -252,7 +252,7 @@ def deepest_parallel_inner(
     deepest_path_lengths_array,
     acc_prob_mats_noabs,
 ):
-    """Parallel wrapper that schedules deepest_worker_inner tasks to compute the matrix for the deepest time interval when multiple coalescents occur in the last time interval; it first serializes the omega dictionary (excluding absorbing states), then constructs a list of tasks from the accumulated keys, paths, and path lengths arrays along with the corresponding probability matrices without absorbing states, executes these tasks in parallel using ncpu.N_CPU workers, and finally aggregates and flattens the results into arrays of updated keys and computed probability matrices along with the total count of valid tasks processed.
+    """Parallel wrapper that schedules deepest_worker_inner tasks to compute the matrix for the deepest time interval when multiple coalescents occur in the last time interval; it first serializes the omega dictionary (excluding absorbing states), then constructs a list of tasks from the accumulated keys, paths, and path lengths arrays along with the corresponding probability matrices without absorbing states, executes these tasks in parallel using ncpu.N_CPU_GLOBAL workers, and finally aggregates and flattens the results into arrays of updated keys and computed probability matrices along with the total count of valid tasks processed.
     :param deepest_idx: number of indices in the deepest keys accumulator array.
     :type deepest_idx: int.
     :param trans_mat_noabs: transition matrix without absorbing states used for deepest time interval computations.
@@ -294,7 +294,7 @@ def deepest_parallel_inner(
                 )
             )
 
-    results = Parallel(n_jobs=ncpu.N_CPU)(
+    results = Parallel(n_jobs=ncpu.N_CPU_GLOBAL)(
         delayed(deepest_worker_inner)(*args) for args in tasks
     )
 

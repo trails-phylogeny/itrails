@@ -28,4 +28,7 @@ def update_n_cpu(user_requested):
         f"Using {N_CPU} CPU cores (requested: {requested}, available: {AVAILABLE_CPUS})."
     )
 
+    global N_CPU_GLOBAL
+    N_CPU_GLOBAL = N_CPU
+
     return N_CPU

@@ -8,7 +8,7 @@ import pandas as pd
 
 from itrails.cutpoints import cutpoints_AB, cutpoints_ABC
 from itrails.int_get_trans_emiss import trans_emiss_calc_introgression
-from itrails.ncpu import AVAILABLE_CPUS, update_n_cpu
+from itrails.ncpu import update_n_cpu
 from itrails.optimizer import viterbi_wrapper
 from itrails.read_data import maf_parser, parse_coordinates
 from itrails.yaml_helpers import load_config
@@ -209,10 +209,8 @@ def main():
     print(f"Results will be saved to: {output_dir} as '{output_prefix}.viterbi.csv'.")
 
     requested_cores = config["settings"].get("n_cpu")
-    if requested_cores is not None:
-        N_CPU = update_n_cpu(requested_cores)
-    else:
-        N_CPU = AVAILABLE_CPUS
+    N_CPU = update_n_cpu(requested_cores)
+    if requested_cores is None:
         print(f"No CPU count specified in config; using default {N_CPU} cores.")
 
     cut_AB = config["settings"].get("cutpoints_AB")

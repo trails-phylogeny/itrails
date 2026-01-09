@@ -56,7 +56,7 @@ def loglik_wrapper_par(a, b, pi, V_lst):
     # Build the list of argument tuples.
     pool_lst = [(a, b, pi, V, order) for V in V_lst]
     # Use ncpus from your global configuration module.
-    ncpus = ncpu.N_CPU
+    ncpus = ncpu.N_CPU_GLOBAL
     # Run forward_loglik_par in parallel over all argument tuples.
     results = Parallel(n_jobs=ncpus)(
         delayed(forward_loglik_par)(*args) for args in pool_lst
@@ -82,7 +82,7 @@ def loglik_wrapper_par_new_method(a, b, pi, V_lst):
     order = [get_idx_state_new_method(i) for i in range(125)]
     pool_args = [(a, b, pi, V, order) for V in V_lst]
     # Determine number of CPUs to use.
-    ncpus = ncpu.N_CPU
+    ncpus = ncpu.N_CPU_GLOBAL
     # Use joblib's Parallel to run forward_loglik_par in parallel.
     results = Parallel(n_jobs=ncpus)(
         delayed(forward_loglik_par)(*args) for args in pool_args
