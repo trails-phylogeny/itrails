@@ -24,7 +24,7 @@ The optimization parameters are defined in a YAML configuration file, which is o
    Parameters to be optimized are specified as a list in the format ```[starting, minimum, maximum]```. For example:
 
 3. **Settings**
-   This section allows you to specify file paths, processing options, and other runtime settings such as the number of cores and the optimization method:
+   This section allows you to specify file paths, processing options, and other runtime settings such as the number of cores, optimization method and maximum number of optimization iterations:
 
 An example configuration file might look like this:
 
@@ -50,6 +50,7 @@ An example configuration file might look like this:
       species_list: ["hg38", "panTro5", "gorGor5", "ponAbe2"]
       n_int_AB: 3
       n_int_ABC: 3
+      n_iter: 10000
 
 Execution and Outputs
 ------------------
