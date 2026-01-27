@@ -21,7 +21,11 @@ def main():
         description="Optimize workflow with introgression using TRAILS",
         usage="itrails-optimize <config.yaml> --input PATH_TO_MAF --output OUTPUT_PATH",
     )
-    parser.add_argument('--version', action='version', version='%(prog)s {version}'.format(version=__version__))
+    parser.add_argument(
+        "--version",
+        action="version",
+        version="%(prog)s {version}".format(version=__version__),
+    )
 
     parser.add_argument(
         "config_file",
@@ -112,6 +116,18 @@ def main():
     optimized_params = config["optimized_parameters"]
 
     settings = config["settings"]
+
+    raw_n_iter = settings.get("n_iter", None)
+    try:
+        n_iter = int(float(raw_n_iter))
+        if float(raw_n_iter) != n_iter or n_iter <= 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        print(
+            "Number of optimization iterations not specified in config file ('n_iter') or not valid (> 0 and integer) defaulting to 10,000 iterations"
+        )
+        n_iter = 10000
+
     settings["output_prefix"] = user_output
     settings["input_maf"] = maf_path
     settings["n_cpu"] = N_CPU
@@ -402,7 +418,7 @@ def main():
     filtered_fixed_dict["mu"] = mu
 
     starting_params_yaml = os.path.join(
-        output_dir, f"{output_prefix}_starting_params.yaml"
+        output_dir, f"{output_prefix}.starting_params.yaml"
     )
 
     def adjust_value(value, param, mu):
@@ -440,7 +456,9 @@ def main():
     with open(starting_params_yaml, "w") as f:
         yaml.dump(starting_params, f, default_flow_style=False)
 
-    best_model_yaml = os.path.join(output_dir, f"{output_prefix}_best_model.yaml")
+    settings.pop("n_iter", None)
+
+    best_model_yaml = os.path.join(output_dir, f"{output_prefix}.best_model.yaml")
     starting_best_model = {
         "fixed_parameters": filtered_fixed_dict,
         "optimized_parameters": {},
@@ -463,13 +481,14 @@ def main():
         V_lst=maf_alignment,
         res_name=user_output,
         case=case,
+        n_iter=n_iter,
         method=method,
         header=True,
     )
 
     print(
         f"Optimization complete. Results saved to {
-            os.path.join(output_dir, f'{output_prefix}_optimization_history.csv')
+            os.path.join(output_dir, f'{output_prefix}.optimization_history.csv')
         }.\n Best model saved to {best_model_yaml}."
     )
 
