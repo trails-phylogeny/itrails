@@ -594,6 +594,7 @@ def optimizer_introgression(
     V_lst,
     res_name,
     case,
+    n_iter,
     method="Nelder-Mead",
     header=True,
     tmp_path="./",
@@ -631,7 +632,7 @@ def optimizer_introgression(
             ["n_eval"] + list(optim_variables) + ["loglik", "time"],
             optimization_history,
         )
-    options = {"maxiter": 10000, "disp": True}
+    options = {"maxiter": n_iter, "disp": True}
 
     d_copy = fixed_params.copy()
     res = minimize(

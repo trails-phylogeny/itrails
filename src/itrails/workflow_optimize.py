@@ -21,7 +21,11 @@ def main():
         description="Optimize workflow using TRAILS",
         usage="itrails-optimize <config.yaml> --output OUTPUT_PATH | itrails-optimize example --output OUTPUT_PATH",
     )
-    parser.add_argument('--version', action='version', version='%(prog)s {version}'.format(version=__version__))
+    parser.add_argument(
+        "--version",
+        action="version",
+        version="%(prog)s {version}".format(version=__version__),
+    )
 
     parser.add_argument(
         "config_file",
@@ -105,6 +109,18 @@ def main():
     fixed_params = config["fixed_parameters"]
     optimized_params = config["optimized_parameters"]
     settings = config["settings"]
+
+    raw_n_iter = settings.get("n_iter", None)
+    try:
+        n_iter = int(float(raw_n_iter))
+        if float(raw_n_iter) != n_iter or n_iter <= 0:
+            raise ValueError
+    except (TypeError, ValueError):
+        print(
+            "Number of optimization iterations not specified in config file ('n_iter') or not valid (> 0 and integer) defaulting to 10,000 iterations"
+        )
+        n_iter = 10000
+
     settings["output_prefix"] = user_output
     settings["input_maf"] = maf_path
     settings["n_cpu"] = N_CPU
@@ -455,6 +471,8 @@ def main():
     with open(starting_params_yaml, "w") as f:
         yaml.dump(starting_params, f, default_flow_style=False)
 
+    settings.pop("n_iter", None)
+
     best_model_yaml = os.path.join(output_dir, f"{output_prefix}.best_model.yaml")
     starting_best_model = {
         "fixed_parameters": filtered_fixed_dict,
@@ -478,6 +496,7 @@ def main():
         V_lst=maf_alignment,
         res_name=user_output,
         case=case,
+        n_iter=n_iter,
         method=method,
         header=True,
     )
