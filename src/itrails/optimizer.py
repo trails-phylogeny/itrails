@@ -3,7 +3,7 @@ import os
 import time
 
 import numpy as np
-from joblib import Parallel, delayed
+from joblib import Parallel, delayed, parallel_config
 from numba import njit
 from numba.typed import List
 from scipy.optimize import minimize
@@ -57,9 +57,10 @@ def loglik_wrapper_par(a, b, pi, V_lst):
     # Use ncpus from your global configuration module.
     ncpus = ncpu.N_CPU_GLOBAL
     # Run forward_loglik_par in parallel over all argument tuples.
-    results = Parallel(n_jobs=ncpus)(
-        delayed(forward_loglik_par)(*args) for args in pool_lst
-    )
+    with parallel_config(inner_max_num_threads = 1, n_jobs=ncpus):
+        results = Parallel(n_jobs=ncpus)(
+            delayed(forward_loglik_par)(*args) for args in pool_lst
+        )
     # Sum up all the results and return the total.
     acc = sum(results)
     return acc
@@ -83,9 +84,10 @@ def loglik_wrapper_par_new_method(a, b, pi, V_lst):
     # Determine number of CPUs to use.
     ncpus = ncpu.N_CPU_GLOBAL
     # Use joblib's Parallel to run forward_loglik_par in parallel.
-    results = Parallel(n_jobs=ncpus)(
-        delayed(forward_loglik_par)(*args) for args in pool_args
-    )
+    with parallel_config(inner_max_num_threads = 1, n_jobs=ncpus):
+        results = Parallel(n_jobs=ncpus)(
+            delayed(forward_loglik_par)(*args) for args in pool_args
+        )
     # Sum up the results.
     return sum(results)
 

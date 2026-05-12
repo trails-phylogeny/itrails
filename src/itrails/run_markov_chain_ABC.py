@@ -1,7 +1,7 @@
 import pickle
 
 import numpy as np
-from joblib import Parallel, delayed
+from joblib import Parallel, delayed, parallel_config
 
 import itrails.ncpu as ncpu
 from itrails.deepest_ti import deep_identify_wrapper, deepest_ti
@@ -49,12 +49,13 @@ def compute_matrices_start_end_wrapper(
     :type num_combinations: int.
     :return: Numpy array containing the resulting matrices computed for each combination.
     :rtype: np.ndarray."""
-    results = Parallel(n_jobs=ncpu.N_CPU_GLOBAL)(
-        delayed(compute_matrix_start_end)(
-            prob_mats[i], exponential_time, omega_start_masks[i], omega_end_masks[i]
+    with parallel_config(inner_max_num_threads = 1, n_jobs=ncpu.N_CPU_GLOBAL):
+        results = Parallel()(
+            delayed(compute_matrix_start_end)(
+                prob_mats[i], exponential_time, omega_start_masks[i], omega_end_masks[i]
+            )
+            for i in range(num_combinations)
         )
-        for i in range(num_combinations)
-    )
     return np.array(results)
 
 
@@ -179,9 +180,10 @@ def vanloan_parallel_inner(
             )
 
     # Run tasks in parallel
-    results = Parallel(n_jobs=ncpu.N_CPU_GLOBAL)(
-        delayed(vanloan_worker_inner)(*args) for args in tasks
-    )
+    with parallel_config(inner_max_num_threads = 1, n_jobs=ncpu.N_CPU_GLOBAL):
+        results = Parallel()(
+            delayed(vanloan_worker_inner)(*args) for args in tasks
+        )
 
     # Combine results
     total_valid = len(results)
@@ -294,9 +296,10 @@ def deepest_parallel_inner(
                 )
             )
 
-    results = Parallel(n_jobs=ncpu.N_CPU_GLOBAL)(
-        delayed(deepest_worker_inner)(*args) for args in tasks
-    )
+    with parallel_config(inner_max_num_threads = 1, n_jobs=ncpu.N_CPU_GLOBAL):
+        results = Parallel()(
+            delayed(deepest_worker_inner)(*args) for args in tasks
+        )
 
     total_valid = len(results)
     flattened_results = np.zeros((total_valid, 1, 201))
