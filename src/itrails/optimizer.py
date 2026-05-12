@@ -1,5 +1,4 @@
 import os
-
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ["MKL_NUM_THREADS"] = "1"
 os.environ["NUMEXPR_NUM_THREADS"] = "1"
@@ -66,7 +65,7 @@ def loglik_wrapper_par(a, b, pi, V_lst):
     ncpus = ncpu.N_CPU_GLOBAL
     # Run forward_loglik_par in parallel over all argument tuples.
     with parallel_config(backend = "loky", inner_max_num_threads = 1, n_jobs=ncpus):
-        results = Parallel(n_jobs=ncpus)(
+        results = Parallel()(
             delayed(forward_loglik_par)(*args) for args in pool_lst
         )
     # Sum up all the results and return the total.
@@ -93,7 +92,7 @@ def loglik_wrapper_par_new_method(a, b, pi, V_lst):
     ncpus = ncpu.N_CPU_GLOBAL
     # Use joblib's Parallel to run forward_loglik_par in parallel.
     with parallel_config(backend = "loky", inner_max_num_threads = 1, n_jobs=ncpus):
-        results = Parallel(n_jobs=ncpus)(
+        results = Parallel()(
             delayed(forward_loglik_par)(*args) for args in pool_args
         )
     # Sum up the results.

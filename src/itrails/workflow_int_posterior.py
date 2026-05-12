@@ -1,7 +1,14 @@
+import os 
+
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+os.environ["RAYON_NUM_THREADS"] = "1"
+os.environ["RAY_NUM_THREADS"] = "1"
+
 import argparse
 import csv
 import math
-import os
 import sys
 
 import pandas as pd

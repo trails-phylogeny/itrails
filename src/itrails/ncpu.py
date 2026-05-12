@@ -17,13 +17,6 @@ def update_n_cpu(user_requested):
         requested = AVAILABLE_CPUS  # if invalid, use default
     N_CPU = min(requested, AVAILABLE_CPUS)
 
-    # Update environment variables
-    os.environ["OMP_NUM_THREADS"] = "1"
-    os.environ["MKL_NUM_THREADS"] = "1"
-    os.environ["NUMEXPR_NUM_THREADS"] = "1"
-    os.environ["RAYON_NUM_THREADS"] = "1"
-    os.environ["RAY_NUM_THREADS"] = "1"
-
     print(
         f"Using {N_CPU} CPU cores (requested: {requested}, available: {AVAILABLE_CPUS})."
     )
