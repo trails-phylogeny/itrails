@@ -1,5 +1,12 @@
-import multiprocessing as mp
 import os
+
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["NUMEXPR_NUM_THREADS"] = "1"
+os.environ["RAYON_NUM_THREADS"] = "1"
+os.environ["RAY_NUM_THREADS"] = "1"
+
+import multiprocessing as mp
 import time
 
 import numpy as np
