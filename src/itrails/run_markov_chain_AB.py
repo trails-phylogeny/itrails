@@ -65,7 +65,7 @@ def compute_matrices_end_wrapper(
     :type num_combinations: int.
     :return: Numpy array containing the resulting matrices computed for each combination.
     :rtype: np.ndarray."""
-    with parallel_config(inner_max_num_threads = 1, n_jobs=ncpu.N_CPU_GLOBAL):
+    with parallel_config(backend = "loky", inner_max_num_threads = 1, n_jobs=ncpu.N_CPU_GLOBAL):
         results = Parallel()(
             delayed(compute_matrix_end)(prob_mats[i], exponential_time, omega_end_masks[i])
             for i in range(num_combinations)
@@ -94,7 +94,7 @@ def compute_matrices_start_end_wrapper(
     :type num_combinations: int.
     :return: Numpy array containing the resulting matrices computed for each combination.
     :rtype: np.ndarray."""
-    with parallel_config(inner_max_num_threads = 1, n_jobs=ncpu.N_CPU_GLOBAL):
+    with parallel_config(backend = "loky", inner_max_num_threads = 1, n_jobs=ncpu.N_CPU_GLOBAL):
         results = Parallel()(
             delayed(compute_matrix_start_end)(
                 prob_mats[i], exponential_time, omega_start_masks[i], omega_end_masks[i]

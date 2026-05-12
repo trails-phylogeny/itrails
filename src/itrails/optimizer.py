@@ -57,7 +57,7 @@ def loglik_wrapper_par(a, b, pi, V_lst):
     # Use ncpus from your global configuration module.
     ncpus = ncpu.N_CPU_GLOBAL
     # Run forward_loglik_par in parallel over all argument tuples.
-    with parallel_config(inner_max_num_threads = 1, n_jobs=ncpus):
+    with parallel_config(backend = "loky", inner_max_num_threads = 1, n_jobs=ncpus):
         results = Parallel(n_jobs=ncpus)(
             delayed(forward_loglik_par)(*args) for args in pool_lst
         )
@@ -84,7 +84,7 @@ def loglik_wrapper_par_new_method(a, b, pi, V_lst):
     # Determine number of CPUs to use.
     ncpus = ncpu.N_CPU_GLOBAL
     # Use joblib's Parallel to run forward_loglik_par in parallel.
-    with parallel_config(inner_max_num_threads = 1, n_jobs=ncpus):
+    with parallel_config(backend = "loky", inner_max_num_threads = 1, n_jobs=ncpus):
         results = Parallel(n_jobs=ncpus)(
             delayed(forward_loglik_par)(*args) for args in pool_args
         )
